@@ -108,7 +108,7 @@ alert_engines:
 
   slack:
     # Leverages a webhook url.
-    webhook_url: https://hooks.slack.com/services/xx
+    webhook_url: https://hooks.slack.com/services/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
 
     # The template engine is jinja2 and the below can be crafted however you want
     # The following template is ONLY rendered when one or more triggers fire.
