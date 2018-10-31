@@ -1,0 +1,175 @@
+# For each testssl.sh result JSON file that is detected by the
+# testssl_result_handler.py watchdog, a larger JSON document
+# will be created (i.e. the 'evaluation_doc') that contains the raw
+# testssl.sh JSON result contents but also some other metadata properties.
+# Here you can customize the top level document property/key names for
+# those values
+#
+# Once the document is constructed, it is passed to the evaluation engine
+# where you can use https://github.com/adriank/ObjectPath queries to evaluate
+# conditions in the document and trigger alerts on that
+#
+# Requited
+evaluation_doc_config:
+  target_keys:
+    # The top level key that will contain the raw testssl.sh result JSON contents
+    testssl_result_json: "testssl_result"
+
+    # The top level key that will contain the relative 'input_dir' path to the
+    # directory that contains the JSON file result that the watchdog detected
+    testssl_result_path: "testssl_result_path"
+
+    # The top level key that will contain the integer value of days till expiration
+    # the value placed here is the result of the `cert_expires_objectpath` below
+    cert_expires_in_days: "cert_expires_in_days"
+
+    # The top level key that will contain any any properties extracted out of the
+    # full PATH to the raw testssl.sh result JSON that triggered the watchdog
+    # as defined in `path_properties_grok` below
+    result_metadata: "result_metadata"
+
+
+# Optional: Custom GROKs defined here can be used in the
+# 'path_properties_grok' below to extract variables
+# out of the testssl.sh result JSON file path which can
+# will then be applied as sub-properties of the evaluation_docs
+# 'result_metadata' key defined above.
+custom_groks:
+    PATHPART: '[A-Za-z0-9-_.]+'
+    MANYPATHPARTS: '[A-Za-z0-9-_./]+'
+
+# Optional: If defined, the variables extracted here will
+# be applied as sub-properties of the evaluation_docs
+# 'result_metadata' key defined above.
+#
+# NOTE! any grok field name of 'ignored' will be excluded/ignored
+path_properties_grok: '%{MANYPATHPARTS:ignored}/%{PATHPART:fqdn}/%{PATHPART:scan_timestamp}/%{PATHPART:swarmname}/%{PATHPART:servicename}/%{PATHPART:filename}'
+
+# Required: a custom 'ObjectPath' query relative from the root of the 'evaluation_doc'
+# that yields the property value that holds the certificate expiration date.
+# The value here will be applied to the evaluation_doc_config.cert_expires_in_days property
+# as an integer (days) @ see http://objectpath.org/reference.html
+cert_expires_objectpath: "$.testssl_result.scanResult[0].serverDefaults[@.id is 'cert_notAfter'][@.finding]"
+
+# For every testssl.sh JSON result file, the 'evaluation_doc' constructed
+# via the above configuration will be passed to the evaluation engine
+# which applies the following triggers if the 'objectpath' yields a result
+# @ see http://objectpath.org/reference.html
+#
+# Behaviors:
+#   - queries that yield a Boolean will only fire if the result is True
+#   - queries that return a string/int/boolean(True) will have their (title,value) passed to the the alert
+#   - queries that return a list/generator will have (title,[results]) passed to the alert
+#
+# For all triggers matched, they will all be sent to the configured alert
+# which must match a supported `alert_engine`
+#
+trigger_on:
+  cert_expiration_90:
+    objectpath: "$.cert_expires_in_days is 90"
+    alert: "slack"
+    title: "Cert Expires in ~90 days"
+  cert_expiration_60:
+    objectpath: "$.cert_expires_in_days is 60"
+    alert: "slack"
+    title: "Cert Expires in ~60 days"
+  cert_expiration_30:
+    objectpath: "$.cert_expires_in_days is 30"
+    alert: "slack"
+    title: "Cert Expires in ~30 days"
+  cert_expiration_7:
+    objectpath: "$.cert_expires_in_days is 7"
+    alert: "slack"
+    title: "Cert Expires in ~7 days"
+  cert_expiration_1:
+    objectpath: "$.cert_expires_in_days is 1"
+    alert: "slack"
+    title: "Cert Expires in ~1 days"
+  cert_expired:
+    objectpath: "$.cert_expires_in_days <= 0"
+    alert: "slack"
+    title: "Cert is EXPIRED!"
+  protocol_issues:
+    objectpath: "$.testssl_result.scanResult[0].protocols[@.severity in MEDIUMHIGHCRITICAL]"
+    alert: "slack"
+    title: "One or more testssl.sh protocol issues found"
+  cipher_issues:
+    objectpath: "$.testssl_result.scanResult[0].ciphers[@.severity in MEDIUMHIGHCRITICAL]"
+    alert: "slack"
+    title: "One or more testssl.sh cipher issues found"
+  vulnerabilities_issues:
+    objectpath: "$.testssl_result.scanResult[0].vulnerabilities[@.severity in MEDIUMHIGHCRITICAL]"
+    alert: "slack"
+    title: "One or more testssl.sh vulnerabilities issues found"
+
+# For each trigger tripped, the JSON data yielded by the objectpath
+# triggers above will be passed the title and value(s)
+alert_engines:
+
+  slack:
+    # Leverages a webhook url.
+    webhook_url: https://hooks.slack.com/services/xx
+
+    # The template engine is jinja2 and the below can be crafted however you want
+    # The following template is ONLY rendered when one or more triggers fire.
+    # Any trigger data sent to this engine will apply each one as an additional
+    # slack attachment to be appended to the list of attachments below.
+    #
+    # The jinja2 template below is rendered with the `evaluation_doc`
+    # passed as its template context object
+    #
+    # The jinja2 environment executing this table exposes a filter function
+    # called `exec_objectpath` that can yield the result of an ObjectPath
+    # query against the context (evaluation_doc contents)
+    #
+    # The template below is intended to be used as the pre-amble for any alert sent.
+    template: >
+              {
+                "text":"*testssl.sh -> {{"$.result_metadata.fqdn"|exec_objectpath}} expires in {{"$.cert_expires_in_days"|exec_objectpath}} days*",
+                "attachments": [
+                    {
+                      "fields": [
+                        {
+                          "title":"Swarm name",
+                          "value":"{{"$.result_metadata.swarmname"|exec_objectpath}}",
+                          "short":true
+                        },
+                        {
+                          "title":"Service Name",
+                          "value":"{{"$.result_metadata.servicename"|exec_objectpath}}",
+                          "short":true
+                        },
+                        {
+                          "title":"Valid from",
+                          "value":"{{"$.testssl_result.scanResult[0].serverDefaults[@.id is 'cert_notBefore'][@.finding]"|exec_objectpath}}",
+                          "short":true
+                        },
+                        {
+                          "title":"Valid to",
+                          "value":"{{"$.testssl_result.scanResult[0].serverDefaults[@.id is 'cert_notAfter'][@.finding]"|exec_objectpath}}",
+                          "short":true
+                        },
+                        {
+                          "title":"Cert Names",
+                          "value":"`{{"$.testssl_result.scanResult[0].serverDefaults[@.id is 'cert_commonName'][@.finding]"|exec_objectpath}}, {{"$.testssl_result.scanResult[0].serverDefaults[@.id is 'cert_commonName_wo_SNI'][@.finding]"|exec_objectpath}}, {{"$.testssl_result.scanResult[0].serverDefaults[@.id is 'cert_subjectAltName'][@.finding]"|exec_objectpath}}`",
+                          "short":false
+                        },
+                        {
+                          "title":"Censys.io SHA256 check",
+                          "value":"https://censys.io/ipv4?q={{"$.testssl_result.scanResult[0].serverDefaults[@.id is 'cert_fingerprintSHA256'][@.finding]"|exec_objectpath}}",
+                          "short":false
+                        },
+                        {
+                          "title":"testssl.sh cmd",
+                          "value":"`{{"$.testssl_result.Invocation"|exec_objectpath}}`",
+                          "short":false
+                        },
+                        {
+                          "title":"testssl.sh cmd result files",
+                          "value":"http://dockerinfra1.adaaaa.com/{{"$.testssl_result_path"|exec_objectpath}}",
+                          "short":false
+                        }
+                      ]
+                    }
+                ]
+              }
