@@ -49,7 +49,10 @@ path_properties_grok: '%{MANYPATHPARTS:ignored}/%{PATHPART:fqdn}/%{PATHPART:scan
 # that yields the property value that holds the certificate expiration date.
 # The value here will be applied to the evaluation_doc_config.cert_expires_in_days property
 # as an integer (days) @ see http://objectpath.org/reference.html
-cert_expires_objectpath: "$.testssl_result.scanResult[0].serverDefaults[@.id is 'cert_notAfter'][@.finding]"
+#
+# NOTE! sometimes multiple certs are returned, so they are keyed by `cert_notAfter <cert#[N]>`
+# so the syntax here leverages an ObjectPath split() to only check 1st part
+cert_expires_objectpath: "$.testssl_result.scanResult[0].serverDefaults[split(@.id,' ')[0] is 'cert_notAfter'][@.finding]"
 
 # For every testssl.sh JSON result file, the 'evaluation_doc' constructed
 # via the above configuration will be passed to the evaluation engine
@@ -108,7 +111,7 @@ alert_engines:
 
   slack:
     # Leverages a webhook url.
-    webhook_url: https://hooks.slack.com/services/xx
+    webhook_url: https://hooks.slack.com/services/xxx
 
     # The template engine is jinja2 and the below can be crafted however you want
     # The following template is ONLY rendered when one or more triggers fire.
@@ -118,11 +121,19 @@ alert_engines:
     # The jinja2 template below is rendered with the `evaluation_doc`
     # passed as its template context object
     #
-    # The jinja2 environment executing this table exposes a filter function
-    # called `exec_objectpath` that can yield the result of an ObjectPath
-    # query against the context (evaluation_doc contents)
+    # The jinja2 environment executing this table exposes several filter functions
+    # which yield the result(s) of an ObjectPath query against the context (evaluation_doc contents)
+    #
+    #  - `exec_objectpath`: can return a [] or single value for all matches
+    #
+    #  - `exec_objectpath_first_match` : returns only the first match found
+    #
+    #  - `exec_objectpath_specific_match(N)` : returns the match found at index N
     #
     # The template below is intended to be used as the pre-amble for any alert sent.
+    # any trigger results will be appended as additional attachments with the trigger
+    # title + value=objectpath query result
+    #
     template: >
               {
                 "text":"*testssl.sh -> {{"$.result_metadata.fqdn"|exec_objectpath}} expires in {{"$.cert_expires_in_days"|exec_objectpath}} days*",
@@ -141,22 +152,22 @@ alert_engines:
                         },
                         {
                           "title":"Valid from",
-                          "value":"{{"$.testssl_result.scanResult[0].serverDefaults[@.id is 'cert_notBefore'][@.finding]"|exec_objectpath}}",
+                          "value":"{{"$.testssl_result.scanResult[0].serverDefaults[split(@.id,' ')[0] is 'cert_notBefore'][@.finding]"|exec_objectpath_first_match}}",
                           "short":true
                         },
                         {
                           "title":"Valid to",
-                          "value":"{{"$.testssl_result.scanResult[0].serverDefaults[@.id is 'cert_notAfter'][@.finding]"|exec_objectpath}}",
+                          "value":"{{"$.testssl_result.scanResult[0].serverDefaults[split(@.id,' ')[0] is 'cert_notAfter'][@.finding]"|exec_objectpath_first_match}}",
                           "short":true
                         },
                         {
                           "title":"Cert Names",
-                          "value":"`{{"$.testssl_result.scanResult[0].serverDefaults[@.id is 'cert_commonName'][@.finding]"|exec_objectpath}}, {{"$.testssl_result.scanResult[0].serverDefaults[@.id is 'cert_commonName_wo_SNI'][@.finding]"|exec_objectpath}}, {{"$.testssl_result.scanResult[0].serverDefaults[@.id is 'cert_subjectAltName'][@.finding]"|exec_objectpath}}`",
+                          "value":"`{{"$.testssl_result.scanResult[0].serverDefaults[split(@.id,' ')[0] is 'cert_commonName'][@.finding]"|exec_objectpath_first_match}}, {{"$.testssl_result.scanResult[0].serverDefaults[split(@.id,' ')[0] is 'cert_commonName_wo_SNI'][@.finding]"|exec_objectpath_first_match}}, {{"$.testssl_result.scanResult[0].serverDefaults[split(@.id,' ')[0] is 'cert_subjectAltName'][@.finding]"|exec_objectpath_first_match}}`",
                           "short":false
                         },
                         {
                           "title":"Censys.io SHA256 check",
-                          "value":"https://censys.io/ipv4?q={{"$.testssl_result.scanResult[0].serverDefaults[@.id is 'cert_fingerprintSHA256'][@.finding]"|exec_objectpath}}",
+                          "value":"https://censys.io/ipv4?q={{"$.testssl_result.scanResult[0].serverDefaults[split(@.id,' ')[0] is 'cert_fingerprintSHA256'][@.finding]"|exec_objectpath_first_match}}",
                           "short":false
                         },
                         {

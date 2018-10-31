@@ -3,7 +3,6 @@
 __author__ = "bitsofinfo"
 
 from multiprocessing import Pool, Process
-import random
 import json
 import pprint
 import yaml
@@ -12,13 +11,11 @@ import re
 import os
 from objectpath import *
 import argparse
-import getopt, sys
+import sys
 import datetime
 import logging
 import requests
-import base64
 from jinja2 import Template, Environment
-import subprocess
 import time
 from slackclient import SlackClient
 from pygrok import Grok
@@ -28,7 +25,7 @@ import http.server
 
 import threading
 from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
+from watchdog.events import FileSystemEventHandler, FileCreatedEvent
 from http import HTTPStatus
 from urllib.parse import urlparse
 from prometheus_client.core import GaugeMetricFamily, CounterMetricFamily, REGISTRY
@@ -52,13 +49,110 @@ class TestsslResultProcessor(object):
     # The Objectpath Tree for the evaluation_doc JSON
     evaluation_doc_objectpath_tree = None
 
+    # More debugging
+    debug_objectpath_expr = False
+
+    # Uses ObjectPath to evaluate the given
+    # objectpath_query against the current state of the
+    # `evaluation_doc_objectpath_tree`
+    #
+    # NOTE! If multiple matches, returns the 1st match
+    def exec_objectpath_first_match(self,objectpath_query):
+        return self._exec_objectpath(objectpath_query,0)
+
+    # Uses ObjectPath to evaluate the given
+    # objectpath_query against the current state of the
+    # `evaluation_doc_objectpath_tree`
+    #
+    # NOTE! If multiple matches, returns the match located
+    # at index `force_return_index_on_multiple_results`
+    # unless force_return_index_on_multiple_results=None
+    # then returns all
+    def exec_objectpath_specific_match(self,objectpath_query,force_return_index_on_multiple_results=None):
+        return self._exec_objectpath(objectpath_query,force_return_index_on_multiple_results)
+
+    # Uses ObjectPath to evaluate the given
+    # objectpath_query against the current state of the
+    # `evaluation_doc_objectpath_tree`
+    #
+    # NOTE! this can return lists of values of when multiple matches
     def exec_objectpath(self,objectpath_query):
-        x = self.evaluation_doc_objectpath_tree.execute(objectpath_query)
-        if isinstance(x,(str,bool,int)):
-            return x
-        elif x is not None:
-            return next(x)
+        return self._exec_objectpath(objectpath_query,None)
+
+    # Uses ObjectPath to evaluate the given
+    # objectpath_query against the current state of the
+    # `evaluation_doc_objectpath_tree`
+    # Takes a force_return_index_on_multiple_results should multiple matches be found
+    # to force the return on a specified element
+    def _exec_objectpath(self,objectpath_query,force_return_index_on_multiple_results):
+        if self.debug_objectpath_expr:
+            logging.debug("exec_objectpath: query: " + objectpath_query)
+
+        qresult = None
+        try:
+            qresult = self.evaluation_doc_objectpath_tree.execute(objectpath_query)
+        except Exception as e:
+            if self.debug_objectpath_expr:
+                logging.debug("exec_objectpath: query: " + objectpath_query  + " failure: " + str(sys.exc_info()[0]))
+                raise e
+
+        if self.debug_objectpath_expr:
+            logging.debug("exec_objectpath: query: " + objectpath_query  + " raw result type(): " + str(type(qresult)))
+
+        # Primitive type
+        if isinstance(qresult,(str,bool,int)):
+            if self.debug_objectpath_expr:
+                logging.debug("exec_objectpath: query: " + objectpath_query  + " returning (str|bool|int): " + str(qresult))
+
+            return qresult
+
+        # List or Generator
+        elif qresult is not None:
+            toreturn = []
+            try:
+                while True:
+                    r = next(qresult)
+
+                    if self.debug_objectpath_expr:
+                        logging.debug("exec_objectpath: query: " + objectpath_query  + " next() returned val: " + str(r))
+
+                    if r is not None:
+                        toreturn.append(r)
+
+            except StopIteration as s:
+                if self.debug_objectpath_expr:
+                    logging.debug("exec_objectpath: query: " + objectpath_query  + " received StopIteration after " + str(len(toreturn)) + " nexts()..")
+
+            if len(toreturn) == 1:
+                toreturn = toreturn[0]
+                if self.debug_objectpath_expr:
+                    logging.debug("exec_objectpath: query: " + objectpath_query  + " generator had 1 element, returning: " + str(toreturn))
+
+                return toreturn
+
+            elif len(toreturn) > 1:
+                if self.debug_objectpath_expr:
+                    logging.debug("exec_objectpath: query: " + objectpath_query  + " generator has %d elements: %s" % (len(toreturn),json.dumps(toreturn)))
+
+                # if we are forced to return a specific index on multiple..... do it
+                if isinstance(force_return_index_on_multiple_results,(str)):
+                    force_return_index_on_multiple_results = int(force_return_index_on_multiple_results)
+                if force_return_index_on_multiple_results is not None:
+                    toreturn = toreturn[force_return_index_on_multiple_results]
+                    if self.debug_objectpath_expr:
+                        logging.debug("exec_objectpath: query: " + objectpath_query  + " force_return_index_on_multiple_results=%d , returning val:%s" % (force_return_index_on_multiple_results,str(toreturn)))
+
+                return toreturn
+
+            else:
+                return None
+
+
+        # None...
         else:
+            if debug_objectpath_expr:
+                logging.debug("exec_objectpath: query: " + objectpath_query  + " yielded None")
+
             return None
 
     # Will process the testssl_json_result_file_path file
@@ -72,7 +166,7 @@ class TestsslResultProcessor(object):
             with open(testssl_json_result_file_path) as f:
                 testssl_result = json.load(f)
         except:
-            logging.error("Unexpected error in open():"+testssl_json_result_file_path, sys.exc_info()[0])
+            logging.exception("Unexpected error in open(): "+testssl_json_result_file_path + " error:" +str(sys.exc_info()[0]))
 
         # for each of our result handler configs
         # lets process the JSON result file through it
@@ -101,7 +195,8 @@ class TestsslResultProcessor(object):
                     self.evaluation_doc_objectpath_tree = Tree(evaluation_doc)
 
                     # Lets grab the cert expires to calc number of days till expiration
-                    cert_expires_at_str = next(self.evaluation_doc_objectpath_tree.execute(config['cert_expires_objectpath']))
+                    # Note we force grab the first match...
+                    cert_expires_at_str = self._exec_objectpath(config['cert_expires_objectpath'],0)
                     cert_expires_at = dateparser.parse(cert_expires_at_str)
                     expires_in_days = cert_expires_at - datetime.datetime.utcnow()
                     evaluation_doc.update({
@@ -114,9 +209,11 @@ class TestsslResultProcessor(object):
                     self.evaluation_doc_objectpath_tree = Tree(evaluation_doc)
 
                     # Create an Jinja2 Environment
-                    # and register a new filter for the exec_objectpath method
+                    # and register a new filter for the exec_objectpath methods
                     env = Environment()
                     env.filters['exec_objectpath'] = self.exec_objectpath
+                    env.filters['exec_objectpath_specific_match'] = self.exec_objectpath_specific_match
+                    env.filters['exec_objectpath_first_match'] = self.exec_objectpath_first_match
 
                     # Create out standard header text and attachment
                     slack_template = env.from_string(config['alert_engines']['slack']['template'])
@@ -133,7 +230,6 @@ class TestsslResultProcessor(object):
                         results = []
 
                         if exec_result is not None:
-                            triggers_fired = True
 
                             if isinstance(exec_result,(str,int,float,bool)):
                                 if isinstance(exec_result,(bool)):
@@ -145,6 +241,7 @@ class TestsslResultProcessor(object):
                                 results = list(exec_result)
 
                             if len(results) > 0:
+                                triggers_fired = True
                                 attachment_title = trigger['title']
                                 attachment_text = "```\n"
                                 for r in results:
@@ -153,6 +250,7 @@ class TestsslResultProcessor(object):
                                 slack_data['attachments'].append({'title':attachment_title,'text':attachment_text, 'color':'danger'})
 
                     if triggers_fired:
+                        logging.debug("Triggers were fired, sending to slack...")
                         response = requests.post(
                             config['alert_engines']['slack']['webhook_url'], data=json.dumps(slack_data),
                             headers={'Content-Type': 'application/json'}
@@ -162,6 +260,7 @@ class TestsslResultProcessor(object):
                                 'Request to slack returned an error %s, the response is:\n%s'
                                 % (response.status_code, response.text)
                             )
+
 
                 except Exception as e:
                     logging.exception("Unexpected error processing: " + testssl_json_result_file_path + " using: " + config_filename + " err:" + str(sys.exc_info()[0]))
@@ -243,9 +342,9 @@ class HandlerConfigFileMonitor(FileSystemEventHandler):
                     try:
                         config = yaml.load(stream)
                     except yaml.YAMLError as exc:
-                        logging.error(event.src_path + ": Unexpected error in yaml.load()", sys.exc_info()[0])
+                        logging.exception(event.src_path + ": Unexpected error in yaml.load("+event.src_path+") " + str(sys.exc_info()[0]))
             except Exception as e:
-                logging.error(event.src_path + ": Unexpected error:", sys.exc_info()[0])
+                logging.exception(event.src_path + ": Unexpected error:" + str(sys.exc_info()[0]))
 
             # our config name is the filename
             config_filename = os.path.basename(event.src_path)
@@ -255,7 +354,8 @@ class HandlerConfigFileMonitor(FileSystemEventHandler):
 def init_watching(input_dir,
                   config_dir,
                   input_dir_watchdog_threads,
-                  input_dir_sleep_seconds):
+                  input_dir_sleep_seconds,
+                  debug_objectpath_expr):
 
     # mthreaded...
     if (isinstance(input_dir_watchdog_threads,str)):
@@ -274,6 +374,7 @@ def init_watching(input_dir,
 
     # Create a TestsslProcessor to consume the testssl_cmds files
     event_handler.testssl_result_processor = TestsslResultProcessor()
+    event_handler.testssl_result_processor.debug_objectpath_expr = debug_objectpath_expr
 
     # give the processor the total number of threads to use
     # for processing testssl.sh cmds concurrently
@@ -282,12 +383,22 @@ def init_watching(input_dir,
     event_handler.testssl_result_processor.threads = input_dir_watchdog_threads
 
 
-    # schedule our testssl.sh json result file watchdog
+    # schedule our config_dir file watchdog
     observer1 = Observer()
     observer1.schedule(result_handler_config_monitor, config_dir, recursive=True)
     observer1.start()
 
     logging.info("Monitoring for new result handler config YAML files at: %s ",config_dir)
+
+    # lets process any config files already there...
+    config_dir_path_to_startup_scan = config_dir
+    if config_dir_path_to_startup_scan.startswith("./") or not config_dir_path_to_startup_scan.startswith("/"):
+        config_dir_path_to_startup_scan = os.getcwd() + "/" + config_dir_path_to_startup_scan.replace("./","")
+
+    print(config_dir_path_to_startup_scan)
+    for f in os.listdir(config_dir):
+        print(f)
+        result_handler_config_monitor.on_created(FileCreatedEvent(config_dir + "/" + os.path.basename(f)))
 
     # schedule our testssl.sh json result file watchdog
     observer2 = Observer()
@@ -319,6 +430,7 @@ if __name__ == '__main__':
     parser.add_argument('-x', '--log-level', dest='log_level', default="DEBUG", help="log level, default DEBUG ")
     parser.add_argument('-w', '--input-dir-watchdog-threads', dest='input_dir_watchdog_threads', default=10, help="max threads for watchdog input-dir file processing, default 10")
     parser.add_argument('-s', '--input-dir-sleep-seconds', dest='input_dir_sleep_seconds', default=300, help="When a new *.json file is detected in --input-dir, how many seconds to wait before processing to allow testssl.sh to finish writing")
+    parser.add_argument('-d', '--debug-object-path-expr', dest='debug_objectpath_expr', default=False, help="When True, adds more details on ObjectPath expression parsing to logs")
 
     args = parser.parse_args()
 
@@ -331,4 +443,5 @@ if __name__ == '__main__':
     init_watching(args.input_dir,
                   args.config_dir,
                   args.input_dir_watchdog_threads,
-                  int(args.input_dir_sleep_seconds))
+                  int(args.input_dir_sleep_seconds),
+                  args.debug_objectpath_expr)
