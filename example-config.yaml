@@ -111,7 +111,7 @@ alert_engines:
 
   slack:
     # Leverages a webhook url.
-    webhook_url: https://hooks.slack.com/services/xxx
+    webhook_url: https://hooks.slack.com/services/xx/xx/xx
 
     # The template engine is jinja2 and the below can be crafted however you want
     # The following template is ONLY rendered when one or more triggers fire.
@@ -177,7 +177,7 @@ alert_engines:
                         },
                         {
                           "title":"testssl.sh cmd result files",
-                          "value":"http://dockerinfra1.adaaaa.com/{{"$.testssl_result_path"|exec_objectpath}}",
+                          "value":"http://localhost:8888/{{"$.testssl_result_path"|exec_objectpath}}",
                           "short":false
                         }
                       ]

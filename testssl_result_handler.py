@@ -11,6 +11,7 @@ import re
 import os
 from objectpath import *
 import argparse
+import collections
 import sys
 import datetime
 import logging
@@ -150,7 +151,7 @@ class TestsslResultProcessor(object):
 
         # None...
         else:
-            if debug_objectpath_expr:
+            if self.debug_objectpath_expr:
                 logging.debug("exec_objectpath: query: " + objectpath_query  + " yielded None")
 
             return None
@@ -158,15 +159,20 @@ class TestsslResultProcessor(object):
     # Will process the testssl_json_result_file_path file
     def processResultFile(self,testssl_json_result_file_path,input_dir):
 
-        logging.info("Processing new testssl.sh JSON result file: '%s'", testssl_json_result_file_path)
+        logging.info("Received event for create of new testssl.sh JSON result file: '%s'", testssl_json_result_file_path)
 
         # open the file
         testssl_result = None
+
+        # Open the JSON file
         try:
-            with open(testssl_json_result_file_path) as f:
+            with open(testssl_json_result_file_path, 'r') as f:
                 testssl_result = json.load(f)
-        except:
+        except Exception as e:
             logging.exception("Unexpected error in open(): "+testssl_json_result_file_path + " error:" +str(sys.exc_info()[0]))
+            raise e
+
+        logging.info("testssl.sh JSON result file loaded OK: '%s'", testssl_json_result_file_path)
 
         # for each of our result handler configs
         # lets process the JSON result file through it
@@ -282,19 +288,22 @@ class TestsslResultFileMonitor(FileSystemEventHandler):
     executor = None
 
     # input_dir_sleep_seconds
-    input_dir_sleep_seconds = 300
+    input_dir_sleep_seconds = 0
 
     # the actual input_dir that we are monitoring
     input_dir = None
 
-    # Filter to match relevent paths in events received
-    filename_filter = '.json'
+    # Regex Filter to match relevent paths in events received
+    input_filename_filter = 'testssloutput.+.json'
 
     def set_threads(self, t):
         self.threads = t
 
-    def on_created(self, event):
-        super(TestsslResultFileMonitor, self).on_created(event)
+    # to keep track of event.src_paths we have processed
+    processed_result_paths = collections.deque(maxlen=400)
+
+    def on_modified(self, event):
+        super(TestsslResultFileMonitor, self).on_modified(event)
 
         if not self.executor:
             self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=self.threads)
@@ -302,13 +311,47 @@ class TestsslResultFileMonitor(FileSystemEventHandler):
         if event.is_directory:
             return
 
-        if self.filename_filter in event.src_path:
+        # Check if already processed
+        if event.src_path in self.processed_result_paths:
+            return
 
-            logging.info("Responding to creation of testssl.sh JSON result: %s", event.src_path)
+        # compile our filter
+        input_filename_re_filter = None
+        if self.input_filename_filter is not None:
+            input_filename_re_filter = re.compile(self.input_filename_filter,re.I)
+
+        if input_filename_re_filter.match(event.src_path):
 
             # give write time to close....
             time.sleep(self.input_dir_sleep_seconds)
 
+            # Attempt to decode the JSON file
+            # if OK then we know its done writing
+            try:
+                with open(event.src_path, 'r') as f:
+                    testssl_result = json.load(f)
+                    if testssl_result is None:
+                        return
+
+            except json.decoder.JSONDecodeError as e:
+                # we just ignore these, it means the file
+                # is not done being written
+                return
+
+            except Exception as e:
+                logging.exception("Unexpected error in open(): "+event.src_path + " error:" +str(sys.exc_info()[0]))
+                return
+
+            # Check if already processed
+            if event.src_path in self.processed_result_paths:
+                return
+
+            logging.info("Responding to parsable testssl.sh JSON result: %s", event.src_path)
+
+            # mark it as processed
+            self.processed_result_paths.append(event.src_path)
+
+            # submit for evaluation
             self.executor.submit(self.testssl_result_processor.processResultFile,event.src_path,self.input_dir)
 
 
@@ -355,7 +398,8 @@ def init_watching(input_dir,
                   config_dir,
                   input_dir_watchdog_threads,
                   input_dir_sleep_seconds,
-                  debug_objectpath_expr):
+                  debug_objectpath_expr,
+                  input_filename_filter):
 
     # mthreaded...
     if (isinstance(input_dir_watchdog_threads,str)):
@@ -368,6 +412,7 @@ def init_watching(input_dir,
     event_handler = TestsslResultFileMonitor()
     event_handler.set_threads(input_dir_watchdog_threads)
     event_handler.input_dir = input_dir
+    event_handler.input_filename_filter = input_filename_filter
     if (isinstance(input_dir_sleep_seconds,str)):
         input_dir_sleep_seconds = int(input_dir_sleep_seconds)
     event_handler.input_dir_sleep_seconds = input_dir_sleep_seconds
@@ -395,9 +440,8 @@ def init_watching(input_dir,
     if config_dir_path_to_startup_scan.startswith("./") or not config_dir_path_to_startup_scan.startswith("/"):
         config_dir_path_to_startup_scan = os.getcwd() + "/" + config_dir_path_to_startup_scan.replace("./","")
 
-    print(config_dir_path_to_startup_scan)
+    # load any pre existing configs
     for f in os.listdir(config_dir):
-        print(f)
         result_handler_config_monitor.on_created(FileCreatedEvent(config_dir + "/" + os.path.basename(f)))
 
     # schedule our testssl.sh json result file watchdog
@@ -425,6 +469,7 @@ def init_watching(input_dir,
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--input-dir', dest='input_dir', default="./input", help="Directory path to recursively monitor for new `*.json` testssl.sh result files")
+    parser.add_argument('-f', '--input-filename-filter', dest='input_filename_filter', default=".*testssloutput.+.json", help="Regex for filter --input-dir files from triggering the watchdog")
     parser.add_argument('-I', '--config-dir', dest='config_dir', default="./configs", help="Directory path to recursively monitor for new `*.yaml` result handler config files")
     parser.add_argument('-l', '--log-file', dest='log_file', default=None, help="Path to log file, default None, STDOUT")
     parser.add_argument('-x', '--log-level', dest='log_level', default="DEBUG", help="log level, default DEBUG ")
@@ -444,4 +489,5 @@ if __name__ == '__main__':
                   args.config_dir,
                   args.input_dir_watchdog_threads,
                   int(args.input_dir_sleep_seconds),
-                  args.debug_objectpath_expr)
+                  args.debug_objectpath_expr,
+                  args.input_filename_filter)
