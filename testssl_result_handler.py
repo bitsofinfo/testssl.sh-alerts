@@ -2,6 +2,7 @@
 
 __author__ = "bitsofinfo"
 
+import importlib
 from multiprocessing import Pool, Process
 import json
 import pprint
@@ -19,8 +20,6 @@ import time
 from pygrok import Grok
 
 import http.server
-
-from slackreactor import SlackReactor
 
 import threading
 from watchdog.observers import Observer
@@ -188,6 +187,9 @@ class TestsslResultProcessor(object):
         # open the file
         testssl_result = None
 
+        # get absolute path
+        testssl_json_result_abs_file_path = os.path.abspath(testssl_json_result_file_path)
+
         # Open the JSON file
         try:
             with open(testssl_json_result_file_path, 'r') as f:
@@ -277,10 +279,14 @@ class TestsslResultProcessor(object):
                             # from the objectpath expression
                             if len(results) > 0:
                                 triggers_fired.append({
+                                                        'tag':trigger_name,
                                                         'title':trigger['title'],
-                                                        'reactor':trigger['reactor'],
+                                                        'reactors':trigger['reactors'],
                                                         'objectpath':trigger['objectpath'],
-                                                        'results':results
+                                                        'results':results,
+                                                        'config_filename':config_filename,
+                                                        'testssl_json_result_abs_file_path':testssl_json_result_abs_file_path,
+                                                        'evaluation_doc':evaluation_doc
                                                       })
 
                     # Triggers were fired
@@ -290,9 +296,12 @@ class TestsslResultProcessor(object):
                         # build a map of reactors -> triggers
                         reactor_triggers = {}
                         for t in triggers_fired:
-                            if t['reactor'] not in reactor_triggers:
-                                reactor_triggers[t['reactor']] = []
-                            reactor_triggers[t['reactor']].append(t)
+
+                            # each trigger can have N reactors
+                            for reactor_name in t['reactors']:
+                                if reactor_name not in reactor_triggers:
+                                    reactor_triggers[reactor_name] = []
+                                reactor_triggers[reactor_name].append(t)
 
 
                         # for each reactor to invoke...
@@ -300,17 +309,22 @@ class TestsslResultProcessor(object):
 
                             # handle misconfig
                             if reactor_name not in config['reactor_engines']:
-                                logging.error("Configured reactor_engine '%' is not configured?... skipping" % (reactor_name))
+                                logging.error("Configured reactor_engine '%s' is not configured?... skipping" % (reactor_name))
                                 continue
 
                             # create the reactor
-                            # TODO: abstract this instead of bs hardwiring....
                             reactor = None
                             reactor_config = config['reactor_engines'][reactor_name]
-                            if reactor_name == 'slack':
-                                reactor = SlackReactor(reactor_config)
+                            class_name = reactor_config['class_name']
+                            try:
+                                reactor_class = getattr(importlib.import_module('reactors.' + class_name.lower()), class_name)
+                                reactor = reactor_class(reactor_config)
+                            except Exception as e:
+                                logging.exception("Error loading reactor class: " + class_name + ". Failed to find 'reactors/"+class_name.lower() +".py' with class '"+class_name+"' declared within it")
+                                raise e
 
                             # react to the fired triggers
+                            logging.debug("Invoking reactor: " + reactor_name + " for " + str(len(triggers)) + " fired triggers")
                             reactor.handleTriggers(triggers,objectpath_ctx)
 
 
@@ -533,7 +547,6 @@ if __name__ == '__main__':
                         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                         filename=args.log_file,filemode='w')
     logging.Formatter.converter = time.gmtime
-
 
     init_watching(args.input_dir,
                   args.config_dir,

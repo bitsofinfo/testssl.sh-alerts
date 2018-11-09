@@ -1,3 +1,6 @@
+# -----------------------------------------
+# Evaluation doc configuration
+# -----------------------------------------
 # For each testssl.sh result JSON file that is detected by the
 # testssl_result_handler.py watchdog, a larger JSON document
 # will be created (i.e. the 'evaluation_doc') that contains the raw
@@ -54,6 +57,10 @@ path_properties_grok: '%{MANYPATHPARTS:ignored}/%{PATHPART:fqdn}/%{PATHPART:scan
 # so the syntax here leverages an ObjectPath split() to only check 1st part
 cert_expires_objectpath: "$.testssl_result.scanResult[0].serverDefaults[split(@.id,' ')[0] is 'cert_notAfter'][@.finding]"
 
+
+# -----------------------------------------
+# Trigger definitions
+# -----------------------------------------
 # For every testssl.sh JSON result file, the 'evaluation_doc' constructed
 # via the above configuration will be passed to the evaluation engine
 # which applies the following triggers if the 'objectpath' yields a result
@@ -64,52 +71,123 @@ cert_expires_objectpath: "$.testssl_result.scanResult[0].serverDefaults[split(@.
 #   - queries that return a string/int/boolean(True) will have their (title,value) passed to the the alert
 #   - queries that return a list/generator will have (title,[results]) passed to the alert
 #
-# For all triggers matched, they will all be sent to the configured reactor
+# For all triggers matched, they will all be sent to the configured reactors
 # which must match a supported `reactor_engine`
 #
 trigger_on:
   cert_expiration_90:
     objectpath: "$.cert_expires_in_days is 90"
-    reactor: "slack"
+    reactors: ["slack"]
     title: "Cert Expires in ~90 days"
   cert_expiration_60:
     objectpath: "$.cert_expires_in_days is 60"
-    reactor: "slack"
+    reactors: ["slack"]
     title: "Cert Expires in ~60 days"
   cert_expiration_30:
     objectpath: "$.cert_expires_in_days is 30"
-    reactor: "slack"
+    reactors: ["slack"]
     title: "Cert Expires in ~30 days"
   cert_expiration_7:
     objectpath: "$.cert_expires_in_days is 7"
-    reactor: "slack"
+    reactors: ["slack"]
     title: "Cert Expires in ~7 days"
   cert_expiration_1:
     objectpath: "$.cert_expires_in_days is 1"
-    reactor: "slack"
+    reactors: ["slack"]
     title: "Cert Expires in ~1 days"
   cert_expired:
     objectpath: "$.cert_expires_in_days <= 0"
-    reactor: "slack"
+    reactors: ["slack"]
     title: "Cert is EXPIRED!"
   protocol_issues:
     objectpath: "$.testssl_result.scanResult[0].protocols[@.severity in MEDIUMHIGHCRITICAL]"
-    reactor: "slack"
+    reactors: ["slack"]
     title: "One or more testssl.sh protocol issues found"
   cipher_issues:
     objectpath: "$.testssl_result.scanResult[0].ciphers[@.severity in MEDIUMHIGHCRITICAL]"
-    reactor: "slack"
+    reactors: ["slack"]
     title: "One or more testssl.sh cipher issues found"
   vulnerabilities_issues:
     objectpath: "$.testssl_result.scanResult[0].vulnerabilities[@.severity in MEDIUMHIGHCRITICAL]"
-    reactor: "slack"
+    reactors: ["slack","copy_vulnerabilities"]
     title: "One or more testssl.sh vulnerabilities issues found"
 
-# For each trigger tripped, the JSON data yielded by the objectpath
-# triggers above will be passed the title and value(s)
+# -----------------------------------------
+# Reactor Engines
+# -----------------------------------------
+# For each trigger fired above, a 'trigger_result' is created
+# that contains the following information. Each reactor engine
+# is passed the following information to its "handleTriggers()" method
+#
+# - 'triggers_fired' - array of trigger_result objects.
+#                      Where each trigge_result is defined as:
+# {
+#    'tag': [short name of the trigger]
+#    'title':[see above, title of the trigger name],
+#    'reactors':[see above, array of configured reactor names],
+#    'objectpath':[see above, the objectpath],
+#    'results':[array of raw object path result values],
+#    'config_filename':[name of the YAML config the trigger was defined in],
+#    'testssl_json_result_abs_file_path':[absolute path to the testssl.sh JSON result file],
+#    'evaluation_doc':[the evalution_doc object that the trigger evaluated]
+#  }
+#
+#
+# - 'objectpath_ctx' - a reference to the ObjectPathContext object used
+#                      when processing the trigger evaluations. The following
+#                      ObjectPathContext properties can be used in the reactor
+#                      for further ObjectPath based functionality if the reactor
+#                      plugin wishes to take advantage of it.
+# {
+#    exec_objectpath: ObjectPathContext function reference
+#    exec_objectpath_specific_match: ObjectPathContext function reference
+#    exec_objectpath_first_match: ObjectPathContext function reference
+#    evaluation_doc: the raw evalution_doc object that the trigger evaluated
+#  }
+#
+#
 reactor_engines:
 
+  #----------------
+  # CopyFileReactor
+  # - Copy files around based on fired trigger results
+  # ---------------
+  copy_vulnerabilities:
+
+    class_name: "CopyFileReactor"
+
+    # Each 'copy_from' and 'copy_to' property below is a jinja2 template
+    #
+    # Each jinja2 copy_from/to template below is rendered with the `trigger_result`
+    # object currently being evaluated from the array (described above)
+    # passed as its jinja2 template context object root
+    #
+    # The jinja2 environment executing the templates exposes several filter functions
+    # which yield the result(s) of an ObjectPath query against the
+    # jinja2 template context if needed ('trigger_result' object contents).
+    #
+    #  - `exec_objectpath`: can return a [] or single value for all matches
+    #
+    #  - `exec_objectpath_first_match` : returns only the first match found
+    #
+    #  - `exec_objectpath_specific_match(N)` : returns the match found at index N
+    #
+    #
+    # AFTER the copy_from/to values are evaluated the any needed target directories
+    # will automatically be created and the 'from' file will be copied to the destination
+    #
+    copy_from: "{{testssl_json_result_abs_file_path}}"
+    copy_to: "/tmp/testssl.sh-vulnerable/{{tag}}/{{evaluation_doc.result_metadata.scan_timestamp}}_{{evaluation_doc.result_metadata.servicename}}_{{evaluation_doc.result_metadata.filename}}"
+
+
+  #----------------
+  # SlackReactor
+  # - Send alerts to slack based on fired trigger results
+  # ---------------
   slack:
+
+    class_name: "SlackReactor"
+
     # Leverages a webhook url.
     webhook_url: https://hooks.slack.com/services/xx
 
@@ -122,7 +200,8 @@ reactor_engines:
     # passed as its template context object
     #
     # The jinja2 environment executing this table exposes several filter functions
-    # which yield the result(s) of an ObjectPath query against the context (evaluation_doc contents)
+    # which yield the result(s) of an ObjectPath query against the
+    # jinja2 template context ('evaluation_doc' object contents).
     #
     #  - `exec_objectpath`: can return a [] or single value for all matches
     #
