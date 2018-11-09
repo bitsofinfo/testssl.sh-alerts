@@ -64,54 +64,54 @@ cert_expires_objectpath: "$.testssl_result.scanResult[0].serverDefaults[split(@.
 #   - queries that return a string/int/boolean(True) will have their (title,value) passed to the the alert
 #   - queries that return a list/generator will have (title,[results]) passed to the alert
 #
-# For all triggers matched, they will all be sent to the configured alert
-# which must match a supported `alert_engine`
+# For all triggers matched, they will all be sent to the configured reactor
+# which must match a supported `reactor_engine`
 #
 trigger_on:
   cert_expiration_90:
     objectpath: "$.cert_expires_in_days is 90"
-    alert: "slack"
+    reactor: "slack"
     title: "Cert Expires in ~90 days"
   cert_expiration_60:
     objectpath: "$.cert_expires_in_days is 60"
-    alert: "slack"
+    reactor: "slack"
     title: "Cert Expires in ~60 days"
   cert_expiration_30:
     objectpath: "$.cert_expires_in_days is 30"
-    alert: "slack"
+    reactor: "slack"
     title: "Cert Expires in ~30 days"
   cert_expiration_7:
     objectpath: "$.cert_expires_in_days is 7"
-    alert: "slack"
+    reactor: "slack"
     title: "Cert Expires in ~7 days"
   cert_expiration_1:
     objectpath: "$.cert_expires_in_days is 1"
-    alert: "slack"
+    reactor: "slack"
     title: "Cert Expires in ~1 days"
   cert_expired:
     objectpath: "$.cert_expires_in_days <= 0"
-    alert: "slack"
+    reactor: "slack"
     title: "Cert is EXPIRED!"
   protocol_issues:
     objectpath: "$.testssl_result.scanResult[0].protocols[@.severity in MEDIUMHIGHCRITICAL]"
-    alert: "slack"
+    reactor: "slack"
     title: "One or more testssl.sh protocol issues found"
   cipher_issues:
     objectpath: "$.testssl_result.scanResult[0].ciphers[@.severity in MEDIUMHIGHCRITICAL]"
-    alert: "slack"
+    reactor: "slack"
     title: "One or more testssl.sh cipher issues found"
   vulnerabilities_issues:
     objectpath: "$.testssl_result.scanResult[0].vulnerabilities[@.severity in MEDIUMHIGHCRITICAL]"
-    alert: "slack"
+    reactor: "slack"
     title: "One or more testssl.sh vulnerabilities issues found"
 
 # For each trigger tripped, the JSON data yielded by the objectpath
 # triggers above will be passed the title and value(s)
-alert_engines:
+reactor_engines:
 
   slack:
     # Leverages a webhook url.
-    webhook_url: https://hooks.slack.com/services/xx/xx/xx
+    webhook_url: https://hooks.slack.com/services/xx
 
     # The template engine is jinja2 and the below can be crafted however you want
     # The following template is ONLY rendered when one or more triggers fire.

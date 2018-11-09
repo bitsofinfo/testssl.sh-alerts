@@ -15,43 +15,42 @@ import collections
 import sys
 import datetime
 import logging
-import requests
-from jinja2 import Template, Environment
 import time
-from slackclient import SlackClient
 from pygrok import Grok
 
 import http.server
 
+from slackreactor import SlackReactor
 
 import threading
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler, FileCreatedEvent
-from http import HTTPStatus
-from urllib.parse import urlparse
-from prometheus_client.core import GaugeMetricFamily, CounterMetricFamily, REGISTRY
 import concurrent.futures
-
 
 # Dict of result handler yaml parsed configs (filename -> object)
 result_handler_configs = {}
 
-class TestsslResultProcessor(object):
 
-    # for controlling access to job_name_2_metrics_db
-    lock = threading.RLock()
-
-    result_handler_configs = {}
-
-    # total threads = total amount of commands
-    # per file that can be processed concurrently
-    threads = 1
+class ObjectPathContext():
 
     # The Objectpath Tree for the evaluation_doc JSON
     evaluation_doc_objectpath_tree = None
 
+    # the raw evaluation doc
+    evaluation_doc = None
+
     # More debugging
     debug_objectpath_expr = False
+
+    def __init__(self, evaldoc, debug_objectpath_expressions):
+        self.debug_objectpath_expr = debug_objectpath_expressions
+        self.update(evaldoc)
+
+    # update the context w/ the most recent
+    # evaluation_doc
+    def update(self,evaldoc):
+        self.evaluation_doc = evaldoc
+        self.evaluation_doc_objectpath_tree = Tree(self.evaluation_doc)
 
     # Uses ObjectPath to evaluate the given
     # objectpath_query against the current state of the
@@ -110,19 +109,28 @@ class TestsslResultProcessor(object):
         # List or Generator
         elif qresult is not None:
             toreturn = []
-            try:
-                while True:
-                    r = next(qresult)
 
+            if isinstance(qresult,(list)):
+                if len(qresult) > 0:
+                    return qresult
+                return None
+
+            # assume generator
+            else:
+                try:
+                    while True:
+                        r = next(qresult)
+
+                        if self.debug_objectpath_expr:
+                            logging.debug("exec_objectpath: query: " + objectpath_query  + " next() returned val: " + str(r))
+
+                        if r is not None:
+                            toreturn.append(r)
+
+                except StopIteration as s:
                     if self.debug_objectpath_expr:
-                        logging.debug("exec_objectpath: query: " + objectpath_query  + " next() returned val: " + str(r))
+                        logging.debug("exec_objectpath: query: " + objectpath_query  + " received StopIteration after " + str(len(toreturn)) + " nexts()..")
 
-                    if r is not None:
-                        toreturn.append(r)
-
-            except StopIteration as s:
-                if self.debug_objectpath_expr:
-                    logging.debug("exec_objectpath: query: " + objectpath_query  + " received StopIteration after " + str(len(toreturn)) + " nexts()..")
 
             if len(toreturn) == 1:
                 toreturn = toreturn[0]
@@ -156,6 +164,22 @@ class TestsslResultProcessor(object):
 
             return None
 
+
+
+class TestsslResultProcessor(object):
+
+    # for controlling access to job_name_2_metrics_db
+    lock = threading.RLock()
+
+    result_handler_configs = {}
+
+    # total threads = total amount of commands
+    # per file that can be processed concurrently
+    threads = 1
+
+    # More debugging
+    debug_objectpath_expr = False
+
     # Will process the testssl_json_result_file_path file
     def processResultFile(self,testssl_json_result_file_path,input_dir):
 
@@ -168,6 +192,12 @@ class TestsslResultProcessor(object):
         try:
             with open(testssl_json_result_file_path, 'r') as f:
                 testssl_result = json.load(f)
+
+                # no scan result
+                if 'scanResult' not in testssl_result or len(testssl_result['scanResult']) == 0:
+                    logging.info("Result JSON contained empty 'scanResult', skipping: '%s'", testssl_json_result_file_path)
+                    return
+
         except Exception as e:
             logging.exception("Unexpected error in open(): "+testssl_json_result_file_path + " error:" +str(sys.exc_info()[0]))
             raise e
@@ -198,11 +228,11 @@ class TestsslResultProcessor(object):
 
                     # Create our Tree to do ObjectPath evals
                     # against our evaluation_doc
-                    self.evaluation_doc_objectpath_tree = Tree(evaluation_doc)
+                    objectpath_ctx = ObjectPathContext(evaluation_doc,self.debug_objectpath_expr)
 
                     # Lets grab the cert expires to calc number of days till expiration
                     # Note we force grab the first match...
-                    cert_expires_at_str = self._exec_objectpath(config['cert_expires_objectpath'],0)
+                    cert_expires_at_str = objectpath_ctx.exec_objectpath(config['cert_expires_objectpath'])
                     cert_expires_at = dateparser.parse(cert_expires_at_str)
                     expires_in_days = cert_expires_at - datetime.datetime.utcnow()
                     evaluation_doc.update({
@@ -212,60 +242,74 @@ class TestsslResultProcessor(object):
 
                     # Rebuild our Tree to do ObjectPath evals
                     # against our evaluation_doc to sure the Tree is up to date
-                    self.evaluation_doc_objectpath_tree = Tree(evaluation_doc)
-
-                    # Create an Jinja2 Environment
-                    # and register a new filter for the exec_objectpath methods
-                    env = Environment()
-                    env.filters['exec_objectpath'] = self.exec_objectpath
-                    env.filters['exec_objectpath_specific_match'] = self.exec_objectpath_specific_match
-                    env.filters['exec_objectpath_first_match'] = self.exec_objectpath_first_match
-
-                    # Create out standard header text and attachment
-                    slack_template = env.from_string(config['alert_engines']['slack']['template'])
-                    rendered_template = slack_template.render(evaluation_doc)
-
-                    # Convert to an object we can now append trigger results to
-                    slack_data = json.loads(rendered_template)
+                    objectpath_ctx.update(evaluation_doc)
 
                     # lets process all triggers
-                    triggers_fired = False
+                    triggers_fired = []
                     for trigger_name in config['trigger_on']:
                         trigger = config['trigger_on'][trigger_name]
-                        exec_result = self.evaluation_doc_objectpath_tree.execute(trigger['objectpath'])
+                        objectpath_result = objectpath_ctx.exec_objectpath(trigger['objectpath'])
                         results = []
 
-                        if exec_result is not None:
+                        if objectpath_result is not None:
 
-                            if isinstance(exec_result,(str,int,float,bool)):
-                                if isinstance(exec_result,(bool)):
-                                    if exec_result is False:
+                            # if a primitive....
+                            if isinstance(objectpath_result,(str,int,float,bool)):
+
+                                # if a boolean we only include if True....
+                                if isinstance(objectpath_result,(bool)):
+                                    if objectpath_result is False:
                                         continue
 
-                                results.append(exec_result)
+                                results.append(objectpath_result)
+
+                            # if a list ...
+                            elif isinstance(objectpath_result,(list)):
+                                results = objectpath_result
+
+                            # some other object, throw in a list
                             else:
-                                results = list(exec_result)
+                                results.append(objectpath_result)
 
+                            # ok we got at least 1 result back
+                            # from the objectpath expression
                             if len(results) > 0:
-                                triggers_fired = True
-                                attachment_title = trigger['title']
-                                attachment_text = "```\n"
-                                for r in results:
-                                    attachment_text += json.dumps(r)+"\n"
-                                attachment_text += "```\n"
-                                slack_data['attachments'].append({'title':attachment_title,'text':attachment_text, 'color':'danger'})
+                                triggers_fired.append({
+                                                        'title':trigger['title'],
+                                                        'reactor':trigger['reactor'],
+                                                        'objectpath':trigger['objectpath'],
+                                                        'results':results
+                                                      })
 
-                    if triggers_fired:
-                        logging.debug("Triggers were fired, sending to slack...")
-                        response = requests.post(
-                            config['alert_engines']['slack']['webhook_url'], data=json.dumps(slack_data),
-                            headers={'Content-Type': 'application/json'}
-                        )
-                        if response.status_code != 200:
-                            raise ValueError(
-                                'Request to slack returned an error %s, the response is:\n%s'
-                                % (response.status_code, response.text)
-                            )
+                    # Triggers were fired
+                    # lets process their reactors
+                    if len(triggers_fired) > 0:
+
+                        # build a map of reactors -> triggers
+                        reactor_triggers = {}
+                        for t in triggers_fired:
+                            if t['reactor'] not in reactor_triggers:
+                                reactor_triggers[t['reactor']] = []
+                            reactor_triggers[t['reactor']].append(t)
+
+
+                        # for each reactor to invoke...
+                        for reactor_name,triggers in reactor_triggers.items():
+
+                            # handle misconfig
+                            if reactor_name not in config['reactor_engines']:
+                                logging.error("Configured reactor_engine '%' is not configured?... skipping" % (reactor_name))
+                                continue
+
+                            # create the reactor
+                            # TODO: abstract this instead of bs hardwiring....
+                            reactor = None
+                            reactor_config = config['reactor_engines'][reactor_name]
+                            if reactor_name == 'slack':
+                                reactor = SlackReactor(reactor_config)
+
+                            # react to the fired triggers
+                            reactor.handleTriggers(triggers,objectpath_ctx)
 
 
                 except Exception as e:
@@ -324,6 +368,10 @@ class TestsslResultFileMonitor(FileSystemEventHandler):
 
             # give write time to close....
             time.sleep(self.input_dir_sleep_seconds)
+
+            # file needs data...
+            if (os.stat(event.src_path).st_size == 0):
+                return
 
             # Attempt to decode the JSON file
             # if OK then we know its done writing
