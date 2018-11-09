@@ -24,7 +24,7 @@ Each config file configures the handler engine for each JSON result file to be p
 The handler engine makes heavy use of [ObjectPath expressions](http://objectpath.org/)
 to craft an `evaluation_doc` which is comprised of the original `testssl.sh` JSON result
 document/object contents plus addition meta-data that can be extracted from the result file path
-via Grok expressions and permitting full customization of the resulting meta-data and
+via Grok ([via PyGrok](https://github.com/garyelephant/pygrok)) expressions and permitting full customization of the resulting meta-data and
 `evaluation_doc` structure and property names.
 
 Once this `evaluation_doc` is constructed the config file's `trigger_on` triggers are
