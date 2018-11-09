@@ -202,12 +202,14 @@ class TestsslResultProcessor(object):
             logging.exception("Unexpected error in open(): "+testssl_json_result_file_path + " error:" +str(sys.exc_info()[0]))
             raise e
 
-        logging.info("testssl.sh JSON result file loaded OK: '%s'", testssl_json_result_file_path)
+        logging.info("testssl.sh JSON result file loaded OK: '%s'" % testssl_json_result_file_path)
 
         # for each of our result handler configs
         # lets process the JSON result file through it
         try:
             for config_filename, config in result_handler_configs.items():
+
+                logging.info("Evaluating %s against config '%s' ..." % (testssl_json_result_file_path,config_filename))
 
                 try:
                     # create uberdoc for evaluations
@@ -516,14 +518,14 @@ def init_watching(input_dir,
 ##########################
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-i', '--input-dir', dest='input_dir', default="./input", help="Directory path to recursively monitor for new `*.json` testssl.sh result files")
-    parser.add_argument('-f', '--input-filename-filter', dest='input_filename_filter', default=".*testssloutput.+.json", help="Regex for filter --input-dir files from triggering the watchdog")
-    parser.add_argument('-I', '--config-dir', dest='config_dir', default="./configs", help="Directory path to recursively monitor for new `*.yaml` result handler config files")
+    parser.add_argument('-i', '--input-dir', dest='input_dir', default="./input", help="Directory path to recursively monitor for new `*.json` testssl.sh result files. Default './input'")
+    parser.add_argument('-f', '--input-filename-filter', dest='input_filename_filter', default=".*testssloutput.+.json", help="Regex for filter --input-dir files from triggering the watchdog. Default '.*testssloutput.+.json'")
+    parser.add_argument('-I', '--config-dir', dest='config_dir', default="./configs", help="Directory path to recursively monitor for new `*.yaml` result handler config files. Default './configs'")
     parser.add_argument('-l', '--log-file', dest='log_file', default=None, help="Path to log file, default None, STDOUT")
     parser.add_argument('-x', '--log-level', dest='log_level', default="DEBUG", help="log level, default DEBUG ")
     parser.add_argument('-w', '--input-dir-watchdog-threads', dest='input_dir_watchdog_threads', default=10, help="max threads for watchdog input-dir file processing, default 10")
-    parser.add_argument('-s', '--input-dir-sleep-seconds', dest='input_dir_sleep_seconds', default=300, help="When a new *.json file is detected in --input-dir, how many seconds to wait before processing to allow testssl.sh to finish writing")
-    parser.add_argument('-d', '--debug-object-path-expr', dest='debug_objectpath_expr', default=False, help="When True, adds more details on ObjectPath expression parsing to logs")
+    parser.add_argument('-s', '--input-dir-sleep-seconds', dest='input_dir_sleep_seconds', default=5, help="When a new *.json file is detected in --input-dir, how many seconds to wait before processing to allow testssl.sh to finish writing. Default 5")
+    parser.add_argument('-d', '--debug-object-path-expr', dest='debug_objectpath_expr', default=False, help="Default False. When True, adds more details on ObjectPath expression parsing to logs")
 
     args = parser.parse_args()
 

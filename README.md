@@ -3,6 +3,47 @@
 This project is intended to provide simple Slack alerting applying [ObjectPath expressions](http://objectpath.org/)
 against [testssl.sh JSON result output files](https://github.com/drwetter/testssl.sh)
 
+![](docs/diag1.png)
+
+## Usage
+
+```
+./testssl_result_handler.py --help       
+
+usage: testssl_result_handler.py [-h] [-i INPUT_DIR]
+                                 [-f INPUT_FILENAME_FILTER] [-I CONFIG_DIR]
+                                 [-l LOG_FILE] [-x LOG_LEVEL]
+                                 [-w INPUT_DIR_WATCHDOG_THREADS]
+                                 [-s INPUT_DIR_SLEEP_SECONDS]
+                                 [-d DEBUG_OBJECTPATH_EXPR]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -i INPUT_DIR, --input-dir INPUT_DIR
+                        Directory path to recursively monitor for new `*.json`
+                        testssl.sh result files. Default './input'
+  -f INPUT_FILENAME_FILTER, --input-filename-filter INPUT_FILENAME_FILTER
+                        Regex for filter --input-dir files from triggering the
+                        watchdog. Default '.*testssloutput.+.json'
+  -I CONFIG_DIR, --config-dir CONFIG_DIR
+                        Directory path to recursively monitor for new `*.yaml`
+                        result handler config files. Default './configs'
+  -l LOG_FILE, --log-file LOG_FILE
+                        Path to log file, default None, STDOUT
+  -x LOG_LEVEL, --log-level LOG_LEVEL
+                        log level, default DEBUG
+  -w INPUT_DIR_WATCHDOG_THREADS, --input-dir-watchdog-threads INPUT_DIR_WATCHDOG_THREADS
+                        max threads for watchdog input-dir file processing,
+                        default 10
+  -s INPUT_DIR_SLEEP_SECONDS, --input-dir-sleep-seconds INPUT_DIR_SLEEP_SECONDS
+                        When a new *.json file is detected in --input-dir, how
+                        many seconds to wait before processing to allow
+                        testssl.sh to finish writing. Default 5
+  -d DEBUG_OBJECTPATH_EXPR, --debug-object-path-expr DEBUG_OBJECTPATH_EXPR
+                        Default False. When True, adds more details on
+                        ObjectPath expression parsing to logs
+  ```
+
 
 ## Related
 
