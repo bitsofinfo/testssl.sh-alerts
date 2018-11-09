@@ -37,8 +37,8 @@ other value returned by an expression other than `None` also qualifies as the tr
 For each fired trigger it will be passed to its configured `reactor`. There are two provided
 reactors:
 
-* `slack`: (slackreactor.py)[slackreactor.py] - Sends Slack alerts using a jinja2 template, see [example-config.yaml](example-config.yaml) for details
-* `copy`: (copyfilereactor.py)[copyfilereactor.py] - Copies files. For example to copy the testssl.sh JSON files that container certain vulnerabilities, see [example-config.yaml](example-config.yaml) for details
+* `slack`: [slackreactor.py](slackreactor.py) - Sends Slack alerts using a jinja2 template, see [example-config.yaml](example-config.yaml) for details
+* `copy`: [copyfilereactor.py](copyfilereactor.py) - Copies files. For example to copy the testssl.sh JSON files that container certain vulnerabilities, see [example-config.yaml](example-config.yaml) for details
 
 
 # Configution details
