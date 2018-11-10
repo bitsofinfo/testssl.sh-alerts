@@ -10,7 +10,7 @@ Provides a daemon that monitors for new [testssl.sh JSON result output files](ht
 
 Dependencies:
 ```
-pip install objectpath pyyaml python-dateutil watchdog slackclient pygrok
+pip install objectpath pyyaml python-dateutil watchdog slackclient pygrok jinja2
 ```
 
 # Overview and Configuration
@@ -85,6 +85,19 @@ optional arguments:
                         Default False. When True, adds more details on
                         ObjectPath expression parsing to logs
   ```
+
+# Docker
+```
+docker build -t testssl-alerts .
+
+docker run \
+  -v /path/to/configs:/configs \
+  -v /path/to/output:/input \
+  testssl-alerts \
+  testssl_result_handler.py \
+    --input-dir /input \
+    --config-dir /configs
+```
 
 ## Creating your own Reactors
 

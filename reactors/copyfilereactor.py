@@ -85,7 +85,7 @@ class CopyFileReactor():
                 # execute the copy
                 shutil.copy(rendered_copy_from,rendered_copy_to)
 
-                logging.exception("CopyFileReactor: Copied OK " + rendered_copy_from + " TO " + rendered_copy_to)
+                logging.info("CopyFileReactor: Copied OK " + rendered_copy_from + " TO " + rendered_copy_to)
 
             except Exception as e:
                 logging.exception("CopyFileReactor: Error copying " + rendered_copy_from + " TO " + rendered_copy_to)
