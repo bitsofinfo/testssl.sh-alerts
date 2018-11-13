@@ -12,7 +12,7 @@
 # where you can use https://github.com/adriank/ObjectPath queries to evaluate
 # conditions in the document and trigger alerts on that
 #
-# Requited
+# Required
 evaluation_doc_config:
   target_keys:
     # The top level key that will contain the raw testssl.sh result JSON contents
