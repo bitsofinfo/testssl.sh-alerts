@@ -58,7 +58,7 @@ custom_groks:
 # 'result_metadata' key defined above.
 #
 # NOTE! any grok field name of 'ignored' will be excluded/ignored
-path_properties_grok: '%{MANYPATHPARTS:ignored}/%{PATHPART:fqdn}/%{PATHPART:scan_timestamp}/%{PATHPART:swarmname}/%{PATHPART:servicename}/%{PATHPART:filename}'
+path_properties_grok: '%{MANYPATHPARTS:ignored}/%{PATHPART:fqdn}/%{PATHPART:scan_timestamp}/%{PATHPART:site_category}/%{PATHPART:site_type}/%{PATHPART:filename}'
 
 # Required: a custom 'ObjectPath' query relative from the root of the 'evaluation_doc'
 # that yields the property value that holds the certificate expiration date.
@@ -87,6 +87,16 @@ cert_expires_objectpath: "$.testssl_result.scanResult[0].serverDefaults[split(@.
 # which must match a supported `reactor_engine`
 #
 trigger_on:
+
+  # NOTE! this one is here for the example...
+  # you would likely never take action on
+  # such a trigger like this..
+  cert_expiration_gte30days:
+    objectpath: "$.cert_expires_in_days >= 30"
+    reactors: ["slack","copy_testssl_issues"]
+    title: "Cert Expires in >= ~30 days"
+
+  # Expiration triggers and vulnerabilities
   cert_expiration_90days:
     objectpath: "$.cert_expires_in_days is 90"
     reactors: ["slack","copy_testssl_issues"]
@@ -190,7 +200,7 @@ reactor_engines:
     # will automatically be created and the 'from' file will be copied to the destination
     #
     copy_from: "{{testssl_json_result_abs_file_path}}"
-    copy_to: "/tmp/testssl.sh-issues/{{tag}}/{{evaluation_doc.result_metadata.scan_timestamp}}_{{evaluation_doc.result_metadata.servicename}}_{{evaluation_doc.result_metadata.filename}}"
+    copy_to: "output/testssl.sh-issues/{{tag}}/{{evaluation_doc.result_metadata.scan_timestamp}}_{{evaluation_doc.result_metadata.site_type}}_{{evaluation_doc.result_metadata.filename}}"
 
 
   #----------------
@@ -202,7 +212,9 @@ reactor_engines:
     class_name: "SlackReactor"
 
     # Leverages a webhook url.
-    webhook_url: https://hooks.slack.com/services/xx
+    # Example hook posts to: https://bitsofinfo.slack.com/messages/CE46Z3TJA/
+    # the #testsslsh-processor channel
+    webhook_url: https://hooks.slack.com/services/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
 
     # The template engine is jinja2 and the below can be crafted however you want
     # The following template is ONLY rendered when one or more triggers fire.
@@ -233,13 +245,13 @@ reactor_engines:
                     {
                       "fields": [
                         {
-                          "title":"Swarm name",
-                          "value":"{{"$.result_metadata.swarmname"|exec_objectpath}}",
+                          "title":"Site Category",
+                          "value":"{{"$.result_metadata.site_category"|exec_objectpath}}",
                           "short":true
                         },
                         {
-                          "title":"Service Name",
-                          "value":"{{"$.result_metadata.servicename"|exec_objectpath}}",
+                          "title":"Site Type",
+                          "value":"{{"$.result_metadata.site_type"|exec_objectpath}}",
                           "short":true
                         },
                         {

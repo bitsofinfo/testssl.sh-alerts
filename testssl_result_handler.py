@@ -272,7 +272,7 @@ class TestsslResultProcessor(object):
 
                     # Lets grab the cert expires to calc number of days till expiration
                     # Note we force grab the first match...
-                    cert_expires_at_str = objectpath_ctx.exec_objectpath(config['cert_expires_objectpath'])
+                    cert_expires_at_str = objectpath_ctx.exec_objectpath_first_match(config['cert_expires_objectpath'])
                     cert_expires_at = dateparser.parse(cert_expires_at_str)
                     expires_in_days = cert_expires_at - datetime.datetime.utcnow()
                     evaluation_doc.update({
@@ -369,7 +369,8 @@ class TestsslResultProcessor(object):
                             # react to the fired triggers
                             logging.debug("Invoking reactor: " + reactor_name + " for " + str(len(triggers)) + " fired triggers")
                             reactor.handleTriggers(triggers,objectpath_ctx)
-
+                    else:
+                        logging.info("No triggers fired for: " + testssl_json_result_file_path)
 
                 except Exception as e:
                     logging.exception("Unexpected error processing: " + testssl_json_result_file_path + " using: " + config_filename + " err:" + str(sys.exc_info()[0]))

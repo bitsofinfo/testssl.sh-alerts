@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<!-- This file was created with testssl.sh. https://testssl.sh -->
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="application/xml+xhtml; charset=UTF-8" />
+<title>testssl.sh</title>
+</head>
+<body>
+<pre>
+<span style="font-weight:bold;">
+###########################################################
+    testssl.sh       3.0rc2 from </span><a href="https://testssl.sh/dev/" style="font-weight:bold;color:black;text-decoration:none;">https://testssl.sh/dev/</a>
+<span style="font-weight:bold;">    (</span><span style="color:#7f7f7f;font-weight:bold;">1b5b386 2018-11-12 21:19:09 -- </span><span style="font-weight:bold;">)</span>
+<span style="font-weight:bold;">
+      This program is free software. Distribution and
+             modification under GPLv2 permitted.
+      USAGE w/o ANY WARRANTY. USE IT AT YOUR OWN RISK!
+
+       Please file bugs @ </span><a href="https://testssl.sh/bugs/" style="font-weight:bold;color:black;text-decoration:none;">https://testssl.sh/bugs/</a>
+<span style="font-weight:bold;">
+###########################################################</span>
+
+ Using "OpenSSL 1.0.2-chacha (1.0.2i-dev)" [~183 ciphers]
+ on COMPUTER1:/home/bitsofinfo/code/github.com/bitsofinfo/testssl.sh-processor/testssl.sh/bin/openssl.Darwin.x86_64
+ (built: "Sep  7 19:34:54 2016", platform: "darwin64-x86_64-cc")
+
+
+<span style="color:white;background-color:black;"> Start 2018-11-13 12:49:21        --&gt;&gt; 172.217.6.68:443 (www.google.com) &lt;&lt;--</span>
+
+ Further IP addresses:   2607:f8b0:4005:80a::2004
+ rDNS (172.217.6.68):    sfo07s17-in-f68.1e100.net. sfo07s17-in-f4.1e100.net.
+ Service detected:       HTTP
+
+
+<span style="text-decoration:underline;font-weight:bold;"> Testing protocols </span><u>via sockets except NPN+ALPN </u>
+
+<span style="font-weight:bold;"> SSLv2      </span><span style="color:lime;font-weight:bold;">not offered (OK)</span>
+<span style="font-weight:bold;"> SSLv3      </span><span style="color:lime;font-weight:bold;">not offered (OK)</span>
+<span style="font-weight:bold;"> TLS 1      </span>offered
+<span style="font-weight:bold;"> TLS 1.1    </span>offered
+<span style="font-weight:bold;"> TLS 1.2    </span><span style="color:lime;font-weight:bold;">offered (OK)</span>
+<span style="font-weight:bold;"> TLS 1.3    </span>not offered
+<span style="font-weight:bold;"> ALPN/HTTP2 </span><span style="color:#00cd00;">h2</span>, http/1.1 (offered)
+
+<span style="text-decoration:underline;font-weight:bold;"> Testing server preferences </span>
+
+<span style="font-weight:bold;"> Has server cipher order?     </span><span style="color:lime;font-weight:bold;">yes (OK)</span>
+<span style="font-weight:bold;"> Negotiated protocol          </span><span style="color:lime;font-weight:bold;">TLSv1.2</span>
+<span style="font-weight:bold;"> Negotiated cipher            </span><span style="color:lime;font-weight:bold;">ECDHE-ECDSA-AES128-GCM-SHA256</span>, <span style="color:#00cd00;">256 bit ECDH (P-256)</span>
+<span style="font-weight:bold;"> Cipher order</span>
+    TLSv1:     ECDHE-ECDSA-AES128-SHA
+    TLSv1.1:   ECDHE-ECDSA-AES128-SHA
+    TLSv1.2:   ECDHE-ECDSA-AES128-GCM-SHA256
+    TLSv1.3    <span style="color:#cd00cd;">Local problem: /home/bitsofinfo/code/github.com/bitsofinfo/testssl.sh-processor/testssl.sh/bin/openssl.Darwin.x86_64 doesn&apos;t support &quot;s_client -tls1_3&quot;</span>
+
+
+<span style="text-decoration:underline;font-weight:bold;"> Testing server defaults (Server Hello) </span>
+
+<span style="font-weight:bold;"> TLS extensions (standard)    </span>"renegotiation info/#65281"
+                              "EC point formats/#11" "session ticket/#35"
+                              "next protocol/#13172"
+                              "extended master secret/#23"
+                              "application layer protocol negotiation/#16"
+                              "signed certificate timestamps/#18"
+<span style="font-weight:bold;"> Session Ticket RFC 5077 hint </span>100800 seconds<span style="color:#cdcd00;font-weight:bold;"> but: PFS requires session ticket keys to be rotated &lt; daily !</span>
+<span style="font-weight:bold;"> SSL Session ID support       </span>yes
+<span style="font-weight:bold;"> Session Resumption           </span>Tickets: yes, ID: yes
+<span style="font-weight:bold;"> TLS clock skew</span>               -1 sec from localtime
+
+  <span style="text-decoration:underline;font-weight:bold;">Server Certificate #1</span>
+  <span style="font-weight:bold;"> Signature Algorithm          </span><span style="color:#00cd00;">SHA256 with RSA</span>
+  <span style="font-weight:bold;"> Server key size              </span>RSA 2048 bits
+  <span style="font-weight:bold;"> Server key usage             </span>--
+  <span style="font-weight:bold;"> Server extended key usage    </span>TLS Web Server Authentication
+  <span style="font-weight:bold;"> Serial / Fingerprints        </span>676D2C52DE74C068 / SHA1 62231769ED0BF01ECCE073C24A668578C5FFB66E
+                                SHA256 F39BFAC12FFA78DA3DBAD8903868166749C2CD58F0774D94103B67BD4542B95E
+  <span style="font-weight:bold;"> Common Name (CN)             </span><i>www.google.com</i>
+  <span style="font-weight:bold;"> subjectAltName (SAN)         </span><i>www.google.com </i>
+  <span style="font-weight:bold;"> Issuer                       </span><i>Google Internet Authority G3</i> (<i>Google Trust Services</i> from <i>US</i>)
+  <span style="font-weight:bold;"> Trust (hostname)             </span><span style="color:#00cd00;">Ok via SAN and CN</span> (same w/o SNI)
+  <span style="font-weight:bold;"> Chain of trust</span>               <span style="color:#00cd00;">Ok   </span><span style="color:#cd00cd;"></span>
+  <span style="font-weight:bold;"> EV cert</span> (experimental)       no
+  <span style="font-weight:bold;"> Certificate Validity (UTC)   </span><span style="color:#00cd00;">69 &gt;= 60 days</span> (2018-10-30 07:14 --> 2019-01-22 06:14)
+  <span style="font-weight:bold;"> # of certificates provided</span>   2
+  <span style="font-weight:bold;"> Certificate Revocation List  </span>http://crl.pki.goog/GTSGIAG3.crl
+  <span style="font-weight:bold;"> OCSP URI                     </span>http://ocsp.pki.goog/GTSGIAG3
+  <span style="font-weight:bold;"> OCSP stapling                </span><span style="color:#cdcd00;font-weight:bold;">not offered</span>
+  <span style="font-weight:bold;"> OCSP must staple extension   </span>--
+  <span style="font-weight:bold;"> DNS CAA RR</span> (experimental)    <span style="color:#00cd00;">available</span> - please check for match with "Issuer" above: <i>issue=pki.goog</i>
+  <span style="font-weight:bold;"> Certificate Transparency     </span><span style="color:#00cd00;">yes</span> (TLS extension)
+
+  <span style="text-decoration:underline;font-weight:bold;">Server Certificate #2</span>
+  <span style="font-weight:bold;"> Signature Algorithm          </span><span style="color:#00cd00;">SHA256 with RSA</span>
+  <span style="font-weight:bold;"> Server key size              </span>EC <span style="color:#00cd00;">256</span> bits
+  <span style="font-weight:bold;"> Server key usage             </span>Digital Signature
+  <span style="font-weight:bold;"> Server extended key usage    </span>TLS Web Server Authentication
+  <span style="font-weight:bold;"> Serial / Fingerprints        </span>597C3781CA490287 / SHA1 0034D4BFD0DC5874D8B05ABC5399229CE64B51BD
+                                SHA256 EB5BAB1249873AA7C8DE7DDE08E95E8D704DE9BE9C8AF67207B44D3BB74AE7E2
+  <span style="font-weight:bold;"> Common Name (CN)             </span><i>www.google.com</i>
+  <span style="font-weight:bold;"> subjectAltName (SAN)         </span><i>www.google.com </i>
+  <span style="font-weight:bold;"> Issuer                       </span><i>Google Internet Authority G3</i> (<i>Google Trust Services</i> from <i>US</i>)
+  <span style="font-weight:bold;"> Trust (hostname)             </span><span style="color:#00cd00;">Ok via SAN and CN</span> (same w/o SNI)
+  <span style="font-weight:bold;"> Chain of trust</span>               <span style="color:#00cd00;">Ok   </span><span style="color:#cd00cd;"></span>
+  <span style="font-weight:bold;"> EV cert</span> (experimental)       no
+  <span style="font-weight:bold;"> Certificate Validity (UTC)   </span><span style="color:#00cd00;">69 &gt;= 60 days</span> (2018-10-30 07:14 --> 2019-01-22 06:14)
+  <span style="font-weight:bold;"> # of certificates provided</span>   2
+  <span style="font-weight:bold;"> Certificate Revocation List  </span>http://crl.pki.goog/GTSGIAG3.crl
+  <span style="font-weight:bold;"> OCSP URI                     </span>http://ocsp.pki.goog/GTSGIAG3
+  <span style="font-weight:bold;"> OCSP stapling                </span><span style="color:#cdcd00;font-weight:bold;">not offered</span>
+  <span style="font-weight:bold;"> OCSP must staple extension   </span>--
+  <span style="font-weight:bold;"> DNS CAA RR</span> (experimental)    <span style="color:#00cd00;">available</span> - please check for match with "Issuer" above: <i>issue=pki.goog</i>
+  <span style="font-weight:bold;"> Certificate Transparency     </span><span style="color:#00cd00;">yes</span> (TLS extension)
+
+
+<span style="color:white;background-color:black;"> Done 2018-11-13 12:50:03 [0046s] --&gt;&gt; 172.217.6.68:443 (www.google.com) &lt;&lt;--</span>
+
+
+</pre>
+</body>
+</html>
