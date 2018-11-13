@@ -552,6 +552,7 @@ def init_watching(input_dir,
     observer1 = Observer()
     observer1.schedule(result_handler_config_monitor, config_dir, recursive=True)
     observer1.start()
+    logging.getLogger("watchdog.observers.inotify_buffer").setLevel("INFO")
 
     logging.info("Monitoring for new result handler config YAML files at: %s ",config_dir)
 
@@ -568,6 +569,7 @@ def init_watching(input_dir,
     observer2 = Observer()
     observer2.schedule(event_handler, input_dir, recursive=True)
     observer2.start()
+    logging.getLogger("watchdog.observers.inotify_buffer").setLevel("INFO")
 
     logging.info("Monitoring for new testssl.sh result JSON files at: %s ",input_dir)
 
