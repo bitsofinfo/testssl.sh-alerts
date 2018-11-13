@@ -95,7 +95,11 @@ optional arguments:
 
 # Example
 
-Lets startup the result handler:
+Note the example below is just that; an example. The reactor engine is completely
+customizable and you can fully customize any of the available reactors with regards
+to the message format and or any other actions and even make your own reactors.
+
+That said: Lets startup the result handler:
 
 ```
 mkdir input/
@@ -158,11 +162,15 @@ Once detected by the watchdog the result handler begins to react, since the `cer
 2018-11-13 21:10:29,087 - root - INFO - CopyFileReactor: Copied OK /home/bitsofinfo/code/github.com/bitsofinfo/testssl.sh-alerts/input/20181113_194917-www.google.com-testssl_cmds/www.google.com/20181108120000/public/search/20181108120000_testssl_www.google.com.json TO output/testssl.sh-issues/cert_expiration_gte30days/20181108120000_search_20181108120000_testssl_www.google.com.json
 ```
 
-Result of `SlackReactor` alert:
+## Result of `SlackReactor` alert:
 ![](docs/alert.png)
 
-Result of `CopyFileReactor`:
+## Result of `CopyFileReactor`:
 ![](docs/output.png)
+
+Again; note the example above is just that; an example. The reactor engine is completely
+customizable and you can fully customize any of the available reactors with regards
+to the message format and or any other actions and even make your own reactors.
 
 
 # Docker
