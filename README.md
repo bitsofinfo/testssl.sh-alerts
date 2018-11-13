@@ -50,14 +50,14 @@ in [example-config.yaml](example-config.yaml)
 ## Usage
 
 ```
-./testssl_result_handler.py --help       
+./testssl_result_handler.py --help
 
 usage: testssl_result_handler.py [-h] [-i INPUT_DIR]
                                  [-f INPUT_FILENAME_FILTER] [-I CONFIG_DIR]
                                  [-l LOG_FILE] [-x LOG_LEVEL]
                                  [-w INPUT_DIR_WATCHDOG_THREADS]
                                  [-s INPUT_DIR_SLEEP_SECONDS]
-                                 [-d DEBUG_OBJECTPATH_EXPR]
+                                 [-d DEBUG_OBJECTPATH_EXPR] [-D] [-E]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -84,6 +84,14 @@ optional arguments:
   -d DEBUG_OBJECTPATH_EXPR, --debug-object-path-expr DEBUG_OBJECTPATH_EXPR
                         Default False. When True, adds more details on
                         ObjectPath expression parsing to logs
+  -D, --debug-dump-evaldoc
+                        Flag to enable dumping the 'evaluation_doc' to STDOUT
+                        after it is constructed for evaluations (WARNING: this
+                        is large & json pretty printed)
+  -E, --dump-evaldoc-on-error
+                        Flag to enable dumping the 'evaluation_doc' to STDOUT
+                        (json pretty printed) on any error (WARNING: this is
+                        large & json pretty printed)
   ```
 
 # Docker
@@ -139,6 +147,7 @@ def __init__(self, reactor_config):
 #    'results':[array of raw object path result values],
 #    'config_filename':[name of the YAML config the trigger was defined in],
 #    'testssl_json_result_abs_file_path':[absolute path to the testssl.sh JSON result file],
+#    'testssl_json_result_filename':[filename only of JSON result file],
 #    'evaluation_doc':[the evalution_doc object that the trigger evaluated]
 #  }
 #

@@ -40,9 +40,11 @@ class ObjectPathContext():
 
     # More debugging
     debug_objectpath_expr = False
+    dump_evaldoc_on_error = False
 
-    def __init__(self, evaldoc, debug_objectpath_expressions):
+    def __init__(self, evaldoc, debug_objectpath_expressions, dump_evaldoc_on_error):
         self.debug_objectpath_expr = debug_objectpath_expressions
+        self.dump_evaldoc_on_error = dump_evaldoc_on_error
         self.update(evaldoc)
 
     # update the context w/ the most recent
@@ -178,6 +180,18 @@ class TestsslResultProcessor(object):
 
     # More debugging
     debug_objectpath_expr = False
+    dump_evaldoc_on_error = False
+    debug_dump_evaldoc = False
+
+    def dumpEvalDoc(self,evaluation_doc):
+        if self.dump_evaldoc_on_error:
+            try:
+                if evaluation_doc is not None:
+                    print("dump_evaldoc_on_error: " + json.dumps(evaluation_doc,indent=2))
+                else:
+                    print("dump_evaldoc_on_error: evaluation_doc is None!")
+            except Exception as etwo:
+                logging.exception("Unexpected error attempting dump_evaldoc_on_error")
 
     # Will process the testssl_json_result_file_path file
     def processResultFile(self,testssl_json_result_file_path,input_dir):
@@ -187,8 +201,12 @@ class TestsslResultProcessor(object):
         # open the file
         testssl_result = None
 
-        # get absolute path
+        # get absolute path & filename optionally
         testssl_json_result_abs_file_path = os.path.abspath(testssl_json_result_file_path)
+        testssl_json_result_filename = os.path.basename(testssl_json_result_file_path)
+
+        # init eval doc
+        evaluation_doc = None
 
         # Open the JSON file
         try:
@@ -217,22 +235,40 @@ class TestsslResultProcessor(object):
                     # create uberdoc for evaluations
                     evaluation_doc = {
                                 config['evaluation_doc_config']['target_keys']['testssl_result_json']: testssl_result,
-                                config['evaluation_doc_config']['target_keys']['testssl_result_path']:os.path.dirname(testssl_json_result_file_path).replace(input_dir+"/","")
-                              }
+                                config['evaluation_doc_config']['target_keys']['testssl_result_parent_dir_path']:os.path.dirname(testssl_json_result_file_path).replace(input_dir+"/",""),
+                                config['evaluation_doc_config']['target_keys']['testssl_result_parent_dir_abs_path']:os.path.dirname(testssl_json_result_abs_file_path),
+                                config['evaluation_doc_config']['target_keys']['testssl_result_file_abs_path']:testssl_json_result_abs_file_path,
+                                config['evaluation_doc_config']['target_keys']['testssl_result_filename']:testssl_json_result_filename
+                                }
 
                     # apply any properties found in the path_properties_grok
                     if 'path_properties_grok' in config and config['path_properties_grok'] is not None:
                         grok = Grok(config['path_properties_grok'],custom_patterns=config['custom_groks'])
                         matches = grok.match(testssl_json_result_file_path)
-                        del matches['ignored']
+
+                        # matches?
+                        if matches is not None:
+                            if 'ignored' in matches:
+                                del matches['ignored']
+                        else:
+                            logging.warn("path_properties_grok: matched nothing! grok:" + config['path_properties_grok'] + " against path: " + testssl_json_result_file_path)
+                            matches = {}
+
                         result_metadata = {
                                           config['evaluation_doc_config']['target_keys']['result_metadata']:matches
                                           }
                         evaluation_doc.update(result_metadata)
 
+
+
                     # Create our Tree to do ObjectPath evals
                     # against our evaluation_doc
-                    objectpath_ctx = ObjectPathContext(evaluation_doc,self.debug_objectpath_expr)
+                    objectpath_ctx = ObjectPathContext(evaluation_doc,self.debug_objectpath_expr,self.dump_evaldoc_on_error)
+
+                    # for debugging
+                    if self.debug_dump_evaldoc:
+                        logging.warn("debug_dump_evaldoc: dumping evalution_doc pre cert_expires_objectpath evaluation")
+                        self.dumpEvalDoc(evaluation_doc)
 
                     # Lets grab the cert expires to calc number of days till expiration
                     # Note we force grab the first match...
@@ -247,6 +283,11 @@ class TestsslResultProcessor(object):
                     # Rebuild our Tree to do ObjectPath evals
                     # against our evaluation_doc to sure the Tree is up to date
                     objectpath_ctx.update(evaluation_doc)
+
+                    # for debugging, dump again as we updated it
+                    if self.debug_dump_evaldoc:
+                        logging.warn("debug_dump_evaldoc: dumping evalution_doc pre Trigger evaluations")
+                        self.dumpEvalDoc(evaluation_doc)
 
                     # lets process all triggers
                     triggers_fired = []
@@ -286,6 +327,7 @@ class TestsslResultProcessor(object):
                                                         'results':results,
                                                         'config_filename':config_filename,
                                                         'testssl_json_result_abs_file_path':testssl_json_result_abs_file_path,
+                                                        'testssl_json_result_filename':testssl_json_result_filename,
                                                         'evaluation_doc':evaluation_doc
                                                       })
 
@@ -321,6 +363,7 @@ class TestsslResultProcessor(object):
                                 reactor = reactor_class(reactor_config)
                             except Exception as e:
                                 logging.exception("Error loading reactor class: " + class_name + ". Failed to find 'reactors/"+class_name.lower() +".py' with class '"+class_name+"' declared within it")
+                                self.dumpEvalDoc(evaluation_doc)
                                 raise e
 
                             # react to the fired triggers
@@ -330,9 +373,11 @@ class TestsslResultProcessor(object):
 
                 except Exception as e:
                     logging.exception("Unexpected error processing: " + testssl_json_result_file_path + " using: " + config_filename + " err:" + str(sys.exc_info()[0]))
+                    self.dumpEvalDoc(evaluation_doc)
 
         except Exception as e:
             logging.exception("Unexpected error processing: " + testssl_json_result_file_path + " " + str(sys.exc_info()[0]))
+            self.dumpEvalDoc(evaluation_doc)
 
 
 
@@ -362,6 +407,12 @@ class TestsslResultFileMonitor(FileSystemEventHandler):
     # to keep track of event.src_paths we have processed
     processed_result_paths = collections.deque(maxlen=400)
 
+    # route to on_modified
+    def on_created(self,event):
+        super(TestsslResultFileMonitor, self).on_created(event)
+        self.on_modified(event)
+
+    # our main impl for processing new json files
     def on_modified(self, event):
         super(TestsslResultFileMonitor, self).on_modified(event)
 
@@ -463,7 +514,9 @@ def init_watching(input_dir,
                   input_dir_watchdog_threads,
                   input_dir_sleep_seconds,
                   debug_objectpath_expr,
-                  input_filename_filter):
+                  input_filename_filter,
+                  dump_evaldoc_on_error,
+                  debug_dump_evaldoc):
 
     # mthreaded...
     if (isinstance(input_dir_watchdog_threads,str)):
@@ -484,6 +537,8 @@ def init_watching(input_dir,
     # Create a TestsslProcessor to consume the testssl_cmds files
     event_handler.testssl_result_processor = TestsslResultProcessor()
     event_handler.testssl_result_processor.debug_objectpath_expr = debug_objectpath_expr
+    event_handler.testssl_result_processor.dump_evaldoc_on_error = dump_evaldoc_on_error
+    event_handler.testssl_result_processor.debug_dump_evaldoc = debug_dump_evaldoc
 
     # give the processor the total number of threads to use
     # for processing testssl.sh cmds concurrently
@@ -540,6 +595,8 @@ if __name__ == '__main__':
     parser.add_argument('-w', '--input-dir-watchdog-threads', dest='input_dir_watchdog_threads', default=10, help="max threads for watchdog input-dir file processing, default 10")
     parser.add_argument('-s', '--input-dir-sleep-seconds', dest='input_dir_sleep_seconds', default=5, help="When a new *.json file is detected in --input-dir, how many seconds to wait before processing to allow testssl.sh to finish writing. Default 5")
     parser.add_argument('-d', '--debug-object-path-expr', dest='debug_objectpath_expr', default=False, help="Default False. When True, adds more details on ObjectPath expression parsing to logs")
+    parser.add_argument('-D', '--debug-dump-evaldoc', action='store_true', help="Flag to enable dumping the 'evaluation_doc' to STDOUT after it is constructed for evaluations (WARNING: this is large & json pretty printed)")
+    parser.add_argument('-E', '--dump-evaldoc-on-error', action='store_true', help="Flag to enable dumping the 'evaluation_doc' to STDOUT (json pretty printed) on any error (WARNING: this is large & json pretty printed)")
 
     args = parser.parse_args()
 
@@ -553,4 +610,6 @@ if __name__ == '__main__':
                   args.input_dir_watchdog_threads,
                   int(args.input_dir_sleep_seconds),
                   args.debug_objectpath_expr,
-                  args.input_filename_filter)
+                  args.input_filename_filter,
+                  args.dump_evaldoc_on_error,
+                  args.debug_dump_evaldoc)

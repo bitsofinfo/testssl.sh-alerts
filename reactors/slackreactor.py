@@ -35,6 +35,7 @@ class SlackReactor():
     #    'results':[array of raw object path result values],
     #    'config_filename':[name of the YAML config the trigger was defined in],
     #    'testssl_json_result_abs_file_path':[absolute path to the testssl.sh JSON result file],
+    #    'testssl_json_result_filename':[filename only of JSON result file],
     #    'evaluation_doc':[the evalution_doc object that the trigger evaluated]
     #  }
     #
