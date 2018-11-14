@@ -18,11 +18,17 @@ class CopyFileReactor():
     # our destination...
     copy_to = None
 
+    # cleanup config
+    cleanup = None
+
     # Constructor
     # passed the raw reactor_config object
     def __init__(self, reactor_config):
         self.copy_from = reactor_config['copy_from']
         self.copy_to = reactor_config['copy_to']
+
+        if 'cleanup' in reactor_config:
+            self.cleanup = reactor_config['cleanup']
 
 
     # When invoked this is passed
@@ -63,6 +69,19 @@ class CopyFileReactor():
         env.filters['exec_objectpath'] = objectpath_ctx.exec_objectpath
         env.filters['exec_objectpath_specific_match'] = objectpath_ctx.exec_objectpath_specific_match
         env.filters['exec_objectpath_first_match'] = objectpath_ctx.exec_objectpath_first_match
+
+        # optionally handle cleanup if configured
+        if self.cleanup is not None:
+            logging.debug("CopyFileReactor: attempting cleanup of " + self.cleanup['path'] + " older than " + str(self.cleanup['delete_older_than_days']) + " days...")
+            now = time.time() # in seconds!
+            purge_older_than = now - (float(self.cleanup['delete_older_than_days']) * 86400) # 86400 = 24 hours = 1 day
+            for root, dirs, files in os.walk(self.cleanup['path'], topdown=False):
+                for _dir in dirs:
+                    toeval = root+"/"+_dir
+                    dir_timestamp = os.path.getmtime(toeval)
+                    if dir_timestamp < purge_older_than:
+                        logging.debug("CopyFileReactor: cleanup: removing old directory: " +toeval)
+                        shutil.rmtree(toeval)
 
         for t in triggers_fired:
 

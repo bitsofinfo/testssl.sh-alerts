@@ -179,6 +179,14 @@ reactor_engines:
 
     class_name: "CopyFileReactor"
 
+    # If specified will cleanup all the path
+    # listed below where dirs/files are
+    # older than `delete_older_than_days`
+    # This is OPTIONAL
+    cleanup:
+      path: "output/"
+      delete_older_than_days: .0001  # can be a decimal as well
+
     # Each 'copy_from' and 'copy_to' property below is a jinja2 template
     #
     # Each jinja2 copy_from/to template below is rendered with the `trigger_result`

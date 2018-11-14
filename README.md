@@ -10,7 +10,7 @@ Provides a daemon that monitors for new [testssl.sh JSON result output files](ht
 
 Dependencies:
 ```
-pip install objectpath pyyaml python-dateutil watchdog slackclient pygrok jinja2
+pip install objectpath pyyaml python-dateutil watchdog slackclient pygrok jinja2 twisted
 ```
 
 # Overview and Configuration
@@ -57,6 +57,7 @@ usage: testssl_result_handler.py [-h] [-i INPUT_DIR]
                                  [-w INPUT_DIR_WATCHDOG_THREADS]
                                  [-s INPUT_DIR_SLEEP_SECONDS]
                                  [-d DEBUG_OBJECTPATH_EXPR] [-D] [-E]
+                                 [-p HTTPSERVER_PORT] [-r HTTPSERVER_ROOT_DIR]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -91,6 +92,14 @@ optional arguments:
                         Flag to enable dumping the 'evaluation_doc' to STDOUT
                         (json pretty printed) on any error (WARNING: this is
                         large & json pretty printed)
+  -p HTTPSERVER_PORT, --httpserver-port HTTPSERVER_PORT
+                        Default None, if a numeric port is specified, this
+                        will startup a simple twisted http server who's
+                        document root is the --httpserver-root-dir
+  -r HTTPSERVER_ROOT_DIR, --httpserver-root-dir HTTPSERVER_ROOT_DIR
+                        Default None, if specified the embedded http server
+                        will serve up content from this directory, has no
+                        effect if --httpserver-port is not specified
 ```
 
 # Example
@@ -110,14 +119,19 @@ mkdir output/
   --debug-object-path-expr True \
   --input-dir ./input \
   --config-dir ./configs \
-  --input-filename-filter '.*_testssl_.+.json'
+  --input-filename-filter '.*_testssl_.+.json' \
+  --httpserver-port 7777 \
+  --httpserver-root-dir output/
+
 ```
 
-At this point the handler is up and running....
+At this point the handler is up and running.... the `--httpserver-root-dir` is serving
+up the files copied via the `CopyFileReactor` config in the `example-config.yaml`
 
 ```
-2018-11-13 21:10:15,144 - root - INFO - Monitoring for new result handler config YAML files at: ./configs
-2018-11-13 21:10:15,146 - root - INFO - Monitoring for new testssl.sh result JSON files at: ./input
+2018-11-14 19:12:39,126 - root - INFO - Monitoring for new result handler config YAML files at: ./configs
+2018-11-14 19:12:39,127 - root - INFO - Monitoring for new testssl.sh result JSON files at: ./input
+2018-11-14 19:12:39,127 - root - INFO - Starting HTTP server listening on: 7777 and serving up: output/
 ...
 ```
 
@@ -131,7 +145,7 @@ Which is then consumed by the handler...
 
 ```
 ...
-2018-11-13 21:10:19,248 - root - INFO - Responding to creation of result handler config file: ./configs/example-config.yaml
+2018-11-14 19:12:48,902 - root - INFO - Responding to creation of result handler config file: ./configs/example-config.yaml
 ...
 ```
 
@@ -143,23 +157,28 @@ project's example output found in the `sample/` directory.
 cp -R sample/* input/
 ```
 
-Once detected by the watchdog the result handler begins to react, since the `cert_expiration_gte30days` trigger fires, we send both a slack alert and copy the JSON result file to the given path as specified in the config's `reactor_engine` settings contained within `example-config.yaml`
+Once detected by the watchdog the result handler begins to react, since the `cert_expiration_gte30days` trigger fires, we send both a slack alert and copy the JSON result file to the given path as specified in the config's `reactor_engine` settings contained within `example-config.yaml`. The files matching the triggers are available under the the copy to dir under `output/`.
+This functionality could be used to automatically move `testssl.sh` JSON result files that flag vulnerabilities or upcoming expirations to a target location for further action or review.
 
 ```
-2018-11-13 21:10:27,895 - root - INFO - Responding to parsable testssl.sh JSON result: ./input/20181113_194917-www.google.com-testssl_cmds/www.google.com/20181108120000/public/search/20181108120000_testssl_www.google.com.json
-2018-11-13 21:10:27,896 - root - INFO - Received event for create of new testssl.sh JSON result file: './input/20181113_194917-www.google.com-testssl_cmds/www.google.com/20181108120000/public/search/20181108120000_testssl_www.google.com.json'
-2018-11-13 21:10:27,897 - root - INFO - testssl.sh JSON result file loaded OK: './input/20181113_194917-www.google.com-testssl_cmds/www.google.com/20181108120000/public/search/20181108120000_testssl_www.google.com.json'
-2018-11-13 21:10:27,897 - root - INFO - Evaluating ./input/20181113_194917-www.google.com-testssl_cmds/www.google.com/20181108120000/public/search/20181108120000_testssl_www.google.com.json against config 'example-config.yaml' ...
-2018-11-13 21:10:27,913 - root - DEBUG - exec_objectpath: query: $.testssl_result.scanResult[0].serverDefaults[split(@.id,' ')[0] is 'cert_notAfter'][@.finding]
-2018-11-13 21:10:27,920 - root - DEBUG - exec_objectpath: query: $.testssl_result.scanResult[0].serverDefaults[split(@.id,' ')[0] is 'cert_notAfter'][@.finding] raw result type(): <class 'generator'>
 ...
-2018-11-13 21:10:28,177 - root - DEBUG - Invoking reactor: slack for 1 fired triggers
+2018-11-14 19:13:13,036 - root - INFO - Responding to parsable testssl.sh JSON result: ./input/20181113_194917-www.google.com-testssl_cmds/www.google.com/20181108120000/public/search/20181108120000_testssl_www.google.com.json
+2018-11-14 19:13:13,037 - root - INFO - Received event for create of new testssl.sh JSON result file: './input/20181113_194917-www.google.com-testssl_cmds/www.google.com/20181108120000/public/search/20181108120000_testssl_www.google.com.json'
+2018-11-14 19:13:13,038 - root - INFO - testssl.sh JSON result file loaded OK: './input/20181113_194917-www.google.com-testssl_cmds/www.google.com/20181108120000/public/search/20181108120000_testssl_www.google.com.json'
+2018-11-14 19:13:13,038 - root - INFO - Evaluating ./input/20181113_194917-www.google.com-testssl_cmds/www.google.com/20181108120000/public/search/20181108120000_testssl_www.google.com.json against config 'example-config.yaml' ...
+2018-11-14 19:13:13,057 - root - DEBUG - exec_objectpath: query: $.testssl_result.scanResult[0].serverDefaults[split(@.id,' ')[0] is 'cert_notAfter'][@.finding]
+2018-11-14 19:13:13,062 - root - DEBUG - exec_objectpath: query: $.testssl_result.scanResult[0].serverDefaults[split(@.id,' ')[0] is 'cert_notAfter'][@.finding] raw result type(): <class 'generator'>
 ...
-2018-11-13 21:10:28,196 - root - DEBUG - SlackReactor: Sending to slack....
-2018-11-13 21:10:28,205 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): hooks.slack.com
-2018-11-13 21:10:29,072 - urllib3.connectionpool - DEBUG - https://hooks.slack.com:443 "POST /services/TE2KJDF4L/BE22XTKGQ/4UKdwVZQ54U1NW8p7mtdowfN HTTP/1.1" 200 22
-2018-11-13 21:10:29,083 - root - DEBUG - Invoking reactor: copy_testssl_issues for 1 fired triggers
-2018-11-13 21:10:29,087 - root - INFO - CopyFileReactor: Copied OK /home/bitsofinfo/code/github.com/bitsofinfo/testssl.sh-alerts/input/20181113_194917-www.google.com-testssl_cmds/www.google.com/20181108120000/public/search/20181108120000_testssl_www.google.com.json TO output/testssl.sh-issues/cert_expiration_gte30days/20181108120000_search_20181108120000_testssl_www.google.com.json
+2018-11-14 19:13:13,263 - root - DEBUG - Invoking reactor: slack for 1 fired triggers
+...
+2018-11-14 19:13:13,303 - root - DEBUG - SlackReactor: Sending to slack....
+2018-11-14 19:13:13,312 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): hooks.slack.com
+2018-11-14 19:13:14,061 - urllib3.connectionpool - DEBUG - https://hooks.slack.com:443 "POST /services/TE2KJDF4L/BE22XTKGQ/4UKdwVZQ54U1NW8p7mtdowfN HTTP/1.1" 200 22
+...
+2018-11-14 19:13:14,070 - root - DEBUG - Invoking reactor: copy_testssl_issues for 1 fired triggers
+...
+2018-11-14 19:13:14,070 - root - DEBUG - CopyFileReactor: attempting cleanup of output/ older than 0.01 days...
+2018-11-14 19:13:14,074 - root - INFO - CopyFileReactor: Copied OK /home/bitsofinfo/code/github.com/bitsofinfo/testssl.sh-alerts/input/20181113_194917-www.google.com-testssl_cmds/www.google.com/20181108120000/public/search/20181108120000_testssl_www.google.com.json TO output/testssl.sh-issues/cert_expiration_gte30days/20181108120000_search_20181108120000_testssl_www.google.com.json
 ```
 
 ## Result of `SlackReactor` alert:
@@ -167,6 +186,9 @@ Once detected by the watchdog the result handler begins to react, since the `cer
 
 ## Result of `CopyFileReactor`:
 ![](docs/output.png)
+
+## Contents of http://localhost:7777:
+![](docs/http.png)
 
 Again; note the example above is just that; an example. The reactor engine is completely
 customizable and you can fully customize any of the available reactors with regards

@@ -9,7 +9,7 @@ RUN apk update ; \
     cp /testssl.sh-alerts/*.py /usr/local/bin/ ; \
     cp -R /testssl.sh-alerts/reactors /usr/local/bin/ ; \
     rm -rf /testssl.sh-alerts ; \
-    pip install --upgrade pip objectpath pyyaml python-dateutil watchdog slackclient pygrok jinja2 ; \
+    pip install --upgrade pip twisted objectpath pyyaml python-dateutil watchdog slackclient pygrok jinja2 ; \
     easy_install --upgrade pytz ; \
     cd /tmp ; \
     apk del git build-base ; \

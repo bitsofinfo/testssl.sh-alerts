@@ -26,6 +26,11 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler, FileCreatedEvent
 import concurrent.futures
 
+from twisted.web.server import Site
+from twisted.web.static import File
+from twisted.internet import reactor
+from twisted.internet import endpoints
+
 # Dict of result handler yaml parsed configs (filename -> object)
 result_handler_configs = {}
 
@@ -517,7 +522,9 @@ def init_watching(input_dir,
                   debug_objectpath_expr,
                   input_filename_filter,
                   dump_evaldoc_on_error,
-                  debug_dump_evaldoc):
+                  debug_dump_evaldoc,
+                  httpserver_port,
+                  httpserver_root_dir):
 
     # mthreaded...
     if (isinstance(input_dir_watchdog_threads,str)):
@@ -573,6 +580,23 @@ def init_watching(input_dir,
 
     logging.info("Monitoring for new testssl.sh result JSON files at: %s ",input_dir)
 
+
+    # port...
+    if (isinstance(httpserver_port,str)):
+        httpserver_port = int(httpserver_port)
+
+    # start local http server?
+    httpdthread = None
+    if httpserver_port is not None and isinstance(httpserver_port,int):
+        logging.info("Starting HTTP server listening on: %d and serving up: %s" % (httpserver_port,httpserver_root_dir))
+        resource = File(httpserver_root_dir)
+        factory = Site(resource)
+        endpoint = endpoints.TCP4ServerEndpoint(reactor, httpserver_port)
+        endpoint.listen(factory)
+        httpdthread = threading.Thread(target=reactor.run,args=(False,))
+        httpdthread.daemon = True
+        httpdthread.start()
+
     try:
         while True:
             time.sleep(30)
@@ -600,6 +624,9 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--debug-object-path-expr', dest='debug_objectpath_expr', default=False, help="Default False. When True, adds more details on ObjectPath expression parsing to logs")
     parser.add_argument('-D', '--debug-dump-evaldoc', action='store_true', help="Flag to enable dumping the 'evaluation_doc' to STDOUT after it is constructed for evaluations (WARNING: this is large & json pretty printed)")
     parser.add_argument('-E', '--dump-evaldoc-on-error', action='store_true', help="Flag to enable dumping the 'evaluation_doc' to STDOUT (json pretty printed) on any error (WARNING: this is large & json pretty printed)")
+    parser.add_argument('-p', '--httpserver-port', dest='httpserver_port', default=None, help="Default None, if a numeric port is specified, this will startup a simple twisted http server who's document root is the --httpserver-root-dir")
+    parser.add_argument('-r', '--httpserver-root-dir', dest='httpserver_root_dir', default=None, help="Default None, if specified the embedded http server will serve up content from this directory, has no effect if --httpserver-port is not specified")
+
 
     args = parser.parse_args()
 
@@ -615,4 +642,6 @@ if __name__ == '__main__':
                   args.debug_objectpath_expr,
                   args.input_filename_filter,
                   args.dump_evaldoc_on_error,
-                  args.debug_dump_evaldoc)
+                  args.debug_dump_evaldoc,
+                  args.httpserver_port,
+                  args.httpserver_root_dir)
