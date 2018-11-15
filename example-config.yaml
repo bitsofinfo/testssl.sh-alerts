@@ -208,7 +208,7 @@ reactor_engines:
     # will automatically be created and the 'from' file will be copied to the destination
     #
     copy_from: "{{testssl_json_result_abs_file_path}}"
-    copy_to: "output/testssl.sh-issues/{{tag}}/{{evaluation_doc.result_metadata.scan_timestamp}}_{{evaluation_doc.result_metadata.site_type}}_{{evaluation_doc.result_metadata.filename}}"
+    copy_to: "output/testssl.sh-issues/{{tag}}/{{testssl_result_filename}}"
 
   #----------------
   # copy_html_result

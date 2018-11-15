@@ -129,9 +129,9 @@ At this point the handler is up and running.... the `--httpserver-root-dir` is s
 up the files copied via the `CopyFileReactor` config in the `example-config.yaml`
 
 ```
-2018-11-15 14:05:24,867 - root - INFO - Monitoring for new result handler config YAML files at: ./configs
-2018-11-15 14:05:24,869 - root - INFO - Monitoring for new testssl.sh result JSON files at: ./input
-2018-11-15 14:05:24,869 - root - INFO - Starting HTTP server listening on: 7777 and serving up: output/
+2018-11-15 14:17:34,583 - root - INFO - Monitoring for new result handler config YAML files at: ./configs
+2018-11-15 14:17:34,584 - root - INFO - Monitoring for new testssl.sh result JSON files at: ./input
+2018-11-15 14:17:34,585 - root - INFO - Starting HTTP server listening on: 7777 and serving up: output/
 ...
 ```
 
@@ -145,7 +145,7 @@ Which is then consumed by the handler...
 
 ```
 ...
-2018-11-15 14:05:28,971 - root - INFO - Responding to creation of result handler config file: ./configs/example-config.yaml
+2018-11-15 14:17:39,713 - root - INFO - Responding to creation of result handler config file: ./configs/example-config.yaml
 ...
 ```
 
@@ -162,25 +162,25 @@ This functionality could be used to automatically move `testssl.sh` JSON result 
 
 ```
 ...
-2018-11-15 14:05:36,269 - root - INFO - Responding to parsable testssl.sh JSON result: ./input/20181113_194917-www.google.com-testssl_cmds/www.google.com/20181108120000/public/search/20181108120000_testssl_www.google.com.json
-2018-11-15 14:05:36,269 - root - INFO - Received event for create of new testssl.sh JSON result file: './input/20181113_194917-www.google.com-testssl_cmds/www.google.com/20181108120000/public/search/20181108120000_testssl_www.google.com.json'
-2018-11-15 14:05:36,270 - root - INFO - testssl.sh JSON result file loaded OK: './input/20181113_194917-www.google.com-testssl_cmds/www.google.com/20181108120000/public/search/20181108120000_testssl_www.google.com.json'
-2018-11-15 14:05:36,270 - root - INFO - Evaluating ./input/20181113_194917-www.google.com-testssl_cmds/www.google.com/20181108120000/public/search/20181108120000_testssl_www.google.com.json against config 'example-config.yaml' ...
-2018-11-15 14:05:36,283 - root - DEBUG - exec_objectpath: query: $.testssl_result.scanResult[0].serverDefaults[split(@.id,' ')[0] is 'cert_notAfter'][@.finding]
-2018-11-15 14:05:36,290 - root - DEBUG - exec_objectpath: query: $.testssl_result.scanResult[0].serverDefaults[split(@.id,' ')[0] is 'cert_notAfter'][@.finding] raw result type(): <class 'generator'>
+2018-11-15 14:17:46,447 - root - INFO - Responding to parsable testssl.sh JSON result: ./input/20181113_194917-www.google.com-testssl_cmds/www.google.com/20181108120000/public/search/20181108120000_testssl_www.google.com.json
+2018-11-15 14:17:46,448 - root - INFO - Received event for create of new testssl.sh JSON result file: './input/20181113_194917-www.google.com-testssl_cmds/www.google.com/20181108120000/public/search/20181108120000_testssl_www.google.com.json'
+2018-11-15 14:17:46,449 - root - INFO - testssl.sh JSON result file loaded OK: './input/20181113_194917-www.google.com-testssl_cmds/www.google.com/20181108120000/public/search/20181108120000_testssl_www.google.com.json'
+2018-11-15 14:17:46,449 - root - INFO - Evaluating ./input/20181113_194917-www.google.com-testssl_cmds/www.google.com/20181108120000/public/search/20181108120000_testssl_www.google.com.json against config 'example-config.yaml' ...
+2018-11-15 14:17:46,458 - root - DEBUG - exec_objectpath: query: $.testssl_result.scanResult[0].serverDefaults[split(@.id,' ')[0] is 'cert_notAfter'][@.finding]
+2018-11-15 14:17:46,465 - root - DEBUG - exec_objectpath: query: $.testssl_result.scanResult[0].serverDefaults[split(@.id,' ')[0] is 'cert_notAfter'][@.finding] raw result type(): <class 'generator'>
+2018-11-15 14:17:46,465 - root - DEBUG - exec_objectpath: query: $.testssl_result.scanResult[0].serverDefaults[split(@.id,' ')[0] is 'cert_notAfter'][@.finding] next() returned val: 2019-01-22 06:14
 ...
-2018-11-15 14:05:36,570 - root - DEBUG - Invoking reactor: slack for 1 fired triggers
+2018-11-15 14:17:46,665 - root - DEBUG - Invoking reactor: slack for 1 fired triggers
+2018-11-15 14:17:46,683 - root - DEBUG - SlackReactor: Sending to slack....
+2018-11-15 14:17:46,691 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): hooks.slack.com
+2018-11-15 14:17:47,589 - urllib3.connectionpool - DEBUG - https://hooks.slack.com:443 "POST /services/TE2KJDF4L/BE22XTKGQ/4UKdwVZQ54U1NW8p7mtdowfN HTTP/1.1" 200 22
 ...
-2018-11-15 14:05:36,628 - root - DEBUG - SlackReactor: Sending to slack....
-2018-11-15 14:05:36,636 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): hooks.slack.com
-2018-11-15 14:05:37,533 - urllib3.connectionpool - DEBUG - https://hooks.slack.com:443 "POST /services/TE2KJDF4L/BE22XTKGQ/4UKdwVZQ54U1NW8p7mtdowfN HTTP/1.1" 200 22
+2018-11-15 14:17:47,597 - root - DEBUG - Invoking reactor: copy_json_result for 1 fired triggers
+2018-11-15 14:17:47,597 - root - DEBUG - CopyFileReactor: attempting cleanup of output/ older than 0.0001 days...
+2018-11-15 14:17:47,601 - root - INFO - CopyFileReactor: Copied OK /home/bitsofinfo/code/github.com/bitsofinfo/testssl.sh-alerts/input/20181113_194917-www.google.com-testssl_cmds/www.google.com/20181108120000/public/search/20181108120000_testssl_www.google.com.json TO output/testssl.sh-issues/cert_expiration_gte30days/
 ...
-2018-11-15 14:05:37,539 - root - DEBUG - Invoking reactor: copy_json_result for 1 fired triggers
-2018-11-15 14:05:37,539 - root - DEBUG - CopyFileReactor: attempting cleanup of output/ older than 0.0001 days...
-2018-11-15 14:05:37,543 - root - INFO - CopyFileReactor: Copied OK /home/bitsofinfo/code/github.com/bitsofinfo/testssl.sh-alerts/input/20181113_194917-www.google.com-testssl_cmds/www.google.com/20181108120000/public/search/20181108120000_testssl_www.google.com.json TO output/testssl.sh-issues/cert_expiration_gte30days/20181108120000_search_20181108120000_testssl_www.google.com.json
-...
-2018-11-15 14:05:37,543 - root - DEBUG - Invoking reactor: copy_html_result for 1 fired triggers
-2018-11-15 14:05:37,546 - root - INFO - CopyFileReactor: Copied OK /home/bitsofinfo/code/github.com/bitsofinfo/testssl.sh-alerts/input/20181113_194917-www.google.com-testssl_cmds/www.google.com/20181108120000/public/search/20181108120000_testssl_www.google.com.html TO output/testssl.sh-issues/cert_expiration_gte30days/
+2018-11-15 14:17:47,601 - root - DEBUG - Invoking reactor: copy_html_result for 1 fired triggers
+2018-11-15 14:17:47,604 - root - INFO - CopyFileReactor: Copied OK /home/bitsofinfo/code/github.com/bitsofinfo/testssl.sh-alerts/input/20181113_194917-www.google.com-testssl_cmds/www.google.com/20181108120000/public/search/20181108120000_testssl_www.google.com.html TO output/testssl.sh-issues/cert_expiration_gte30days/
 ```
 
 ## Result of `SlackReactor` alert:
