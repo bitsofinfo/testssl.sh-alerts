@@ -129,9 +129,9 @@ At this point the handler is up and running.... the `--httpserver-root-dir` is s
 up the files copied via the `CopyFileReactor` config in the `example-config.yaml`
 
 ```
-2018-11-14 19:12:39,126 - root - INFO - Monitoring for new result handler config YAML files at: ./configs
-2018-11-14 19:12:39,127 - root - INFO - Monitoring for new testssl.sh result JSON files at: ./input
-2018-11-14 19:12:39,127 - root - INFO - Starting HTTP server listening on: 7777 and serving up: output/
+2018-11-15 14:05:24,867 - root - INFO - Monitoring for new result handler config YAML files at: ./configs
+2018-11-15 14:05:24,869 - root - INFO - Monitoring for new testssl.sh result JSON files at: ./input
+2018-11-15 14:05:24,869 - root - INFO - Starting HTTP server listening on: 7777 and serving up: output/
 ...
 ```
 
@@ -145,7 +145,7 @@ Which is then consumed by the handler...
 
 ```
 ...
-2018-11-14 19:12:48,902 - root - INFO - Responding to creation of result handler config file: ./configs/example-config.yaml
+2018-11-15 14:05:28,971 - root - INFO - Responding to creation of result handler config file: ./configs/example-config.yaml
 ...
 ```
 
@@ -162,23 +162,25 @@ This functionality could be used to automatically move `testssl.sh` JSON result 
 
 ```
 ...
-2018-11-14 19:13:13,036 - root - INFO - Responding to parsable testssl.sh JSON result: ./input/20181113_194917-www.google.com-testssl_cmds/www.google.com/20181108120000/public/search/20181108120000_testssl_www.google.com.json
-2018-11-14 19:13:13,037 - root - INFO - Received event for create of new testssl.sh JSON result file: './input/20181113_194917-www.google.com-testssl_cmds/www.google.com/20181108120000/public/search/20181108120000_testssl_www.google.com.json'
-2018-11-14 19:13:13,038 - root - INFO - testssl.sh JSON result file loaded OK: './input/20181113_194917-www.google.com-testssl_cmds/www.google.com/20181108120000/public/search/20181108120000_testssl_www.google.com.json'
-2018-11-14 19:13:13,038 - root - INFO - Evaluating ./input/20181113_194917-www.google.com-testssl_cmds/www.google.com/20181108120000/public/search/20181108120000_testssl_www.google.com.json against config 'example-config.yaml' ...
-2018-11-14 19:13:13,057 - root - DEBUG - exec_objectpath: query: $.testssl_result.scanResult[0].serverDefaults[split(@.id,' ')[0] is 'cert_notAfter'][@.finding]
-2018-11-14 19:13:13,062 - root - DEBUG - exec_objectpath: query: $.testssl_result.scanResult[0].serverDefaults[split(@.id,' ')[0] is 'cert_notAfter'][@.finding] raw result type(): <class 'generator'>
+2018-11-15 14:05:36,269 - root - INFO - Responding to parsable testssl.sh JSON result: ./input/20181113_194917-www.google.com-testssl_cmds/www.google.com/20181108120000/public/search/20181108120000_testssl_www.google.com.json
+2018-11-15 14:05:36,269 - root - INFO - Received event for create of new testssl.sh JSON result file: './input/20181113_194917-www.google.com-testssl_cmds/www.google.com/20181108120000/public/search/20181108120000_testssl_www.google.com.json'
+2018-11-15 14:05:36,270 - root - INFO - testssl.sh JSON result file loaded OK: './input/20181113_194917-www.google.com-testssl_cmds/www.google.com/20181108120000/public/search/20181108120000_testssl_www.google.com.json'
+2018-11-15 14:05:36,270 - root - INFO - Evaluating ./input/20181113_194917-www.google.com-testssl_cmds/www.google.com/20181108120000/public/search/20181108120000_testssl_www.google.com.json against config 'example-config.yaml' ...
+2018-11-15 14:05:36,283 - root - DEBUG - exec_objectpath: query: $.testssl_result.scanResult[0].serverDefaults[split(@.id,' ')[0] is 'cert_notAfter'][@.finding]
+2018-11-15 14:05:36,290 - root - DEBUG - exec_objectpath: query: $.testssl_result.scanResult[0].serverDefaults[split(@.id,' ')[0] is 'cert_notAfter'][@.finding] raw result type(): <class 'generator'>
 ...
-2018-11-14 19:13:13,263 - root - DEBUG - Invoking reactor: slack for 1 fired triggers
+2018-11-15 14:05:36,570 - root - DEBUG - Invoking reactor: slack for 1 fired triggers
 ...
-2018-11-14 19:13:13,303 - root - DEBUG - SlackReactor: Sending to slack....
-2018-11-14 19:13:13,312 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): hooks.slack.com
-2018-11-14 19:13:14,061 - urllib3.connectionpool - DEBUG - https://hooks.slack.com:443 "POST /services/TE2KJDF4L/BE22XTKGQ/4UKdwVZQ54U1NW8p7mtdowfN HTTP/1.1" 200 22
+2018-11-15 14:05:36,628 - root - DEBUG - SlackReactor: Sending to slack....
+2018-11-15 14:05:36,636 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): hooks.slack.com
+2018-11-15 14:05:37,533 - urllib3.connectionpool - DEBUG - https://hooks.slack.com:443 "POST /services/TE2KJDF4L/BE22XTKGQ/4UKdwVZQ54U1NW8p7mtdowfN HTTP/1.1" 200 22
 ...
-2018-11-14 19:13:14,070 - root - DEBUG - Invoking reactor: copy_testssl_issues for 1 fired triggers
+2018-11-15 14:05:37,539 - root - DEBUG - Invoking reactor: copy_json_result for 1 fired triggers
+2018-11-15 14:05:37,539 - root - DEBUG - CopyFileReactor: attempting cleanup of output/ older than 0.0001 days...
+2018-11-15 14:05:37,543 - root - INFO - CopyFileReactor: Copied OK /home/bitsofinfo/code/github.com/bitsofinfo/testssl.sh-alerts/input/20181113_194917-www.google.com-testssl_cmds/www.google.com/20181108120000/public/search/20181108120000_testssl_www.google.com.json TO output/testssl.sh-issues/cert_expiration_gte30days/20181108120000_search_20181108120000_testssl_www.google.com.json
 ...
-2018-11-14 19:13:14,070 - root - DEBUG - CopyFileReactor: attempting cleanup of output/ older than 0.01 days...
-2018-11-14 19:13:14,074 - root - INFO - CopyFileReactor: Copied OK /home/bitsofinfo/code/github.com/bitsofinfo/testssl.sh-alerts/input/20181113_194917-www.google.com-testssl_cmds/www.google.com/20181108120000/public/search/20181108120000_testssl_www.google.com.json TO output/testssl.sh-issues/cert_expiration_gte30days/20181108120000_search_20181108120000_testssl_www.google.com.json
+2018-11-15 14:05:37,543 - root - DEBUG - Invoking reactor: copy_html_result for 1 fired triggers
+2018-11-15 14:05:37,546 - root - INFO - CopyFileReactor: Copied OK /home/bitsofinfo/code/github.com/bitsofinfo/testssl.sh-alerts/input/20181113_194917-www.google.com-testssl_cmds/www.google.com/20181108120000/public/search/20181108120000_testssl_www.google.com.html TO output/testssl.sh-issues/cert_expiration_gte30days/
 ```
 
 ## Result of `SlackReactor` alert:
@@ -232,48 +234,49 @@ reactor_engines:
 
 2. It should support a constructor and declared the named method as follows:
 ```
-...
-
-# Constructor
-# passed the raw reactor_config object
-def __init__(self, reactor_config):
-    self.my_prop = reactor_config['my_prop']
-
-
-# When invoked this is passed
-#
-# - 'triggers_fired' - array of trigger_result objects.
-#                      Where each trigge_result is defined as:
-# {
-#    'tag': [short name of the trigger]
-#    'title':[see above, title of the trigger name],
-#    'reactors':[see above, array of configured reactor names],
-#    'objectpath':[see above, the objectpath],
-#    'results':[array of raw object path result values],
-#    'config_filename':[name of the YAML config the trigger was defined in],
-#    'testssl_json_result_abs_file_path':[absolute path to the testssl.sh JSON result file],
-#    'testssl_json_result_filename':[filename only of JSON result file],
-#    'evaluation_doc':[the evalution_doc object that the trigger evaluated]
-#  }
-#
-#
-# - 'objectpath_ctx' - a reference to the ObjectPathContext object used
-#                      when processing the trigger evaluations. The following
-#                      ObjectPathContext properties can be used in the reactor
-#                      for further ObjectPath based functionality if the reactor
-#                      plugin wishes to take advantage of it.
-# {
-#    exec_objectpath: ObjectPathContext function reference
-#    exec_objectpath_specific_match: ObjectPathContext function reference
-#    exec_objectpath_first_match: ObjectPathContext function reference
-#    evaluation_doc: the raw evalution_doc object that the trigger evaluated
-#  }
-#
-#
-def handleTriggers(self, triggers_fired, objectpath_ctx):
+class [MyCustom]Reactor():
   ...
-  DO YOUR WORK HERE!
-  ...
+
+  # Constructor
+  # passed the raw reactor_config object
+  def __init__(self, reactor_config):
+      self.my_prop = reactor_config['my_prop']
+
+
+  # When invoked this is passed
+  #
+  # - 'triggers_fired' - array of trigger_result objects.
+  #                      Where each trigge_result is defined as:
+  # {
+  #    'tag': [short name of the trigger]
+  #    'title':[see above, title of the trigger name],
+  #    'reactors':[see above, array of configured reactor names],
+  #    'objectpath':[see above, the objectpath],
+  #    'results':[array of raw object path result values],
+  #    'config_filename':[name of the YAML config the trigger was defined in],
+  #    'testssl_json_result_abs_file_path':[absolute path to the testssl.sh JSON result file],
+  #    'testssl_json_result_filename':[filename only of JSON result file],
+  #    'evaluation_doc':[the evalution_doc object that the trigger evaluated]
+  #  }
+  #
+  #
+  # - 'objectpath_ctx' - a reference to the ObjectPathContext object used
+  #                      when processing the trigger evaluations. The following
+  #                      ObjectPathContext properties can be used in the reactor
+  #                      for further ObjectPath based functionality if the reactor
+  #                      plugin wishes to take advantage of it.
+  # {
+  #    exec_objectpath: ObjectPathContext function reference
+  #    exec_objectpath_specific_match: ObjectPathContext function reference
+  #    exec_objectpath_first_match: ObjectPathContext function reference
+  #    evaluation_doc: the raw evalution_doc object that the trigger evaluated
+  #  }
+  #
+  #
+  def handleTriggers(self, triggers_fired, objectpath_ctx):
+    ...
+    DO YOUR WORK HERE!
+    ...
 ```
 
 

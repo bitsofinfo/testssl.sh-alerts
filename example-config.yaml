@@ -93,45 +93,45 @@ trigger_on:
   # such a trigger like this..
   cert_expiration_gte30days:
     objectpath: "$.cert_expires_in_days >= 30"
-    reactors: ["slack","copy_testssl_issues"]
+    reactors: ["slack","copy_json_result","copy_html_result"]
     title: "Cert Expires in >= ~30 days"
 
   # Expiration triggers and vulnerabilities
   cert_expiration_90days:
     objectpath: "$.cert_expires_in_days is 90"
-    reactors: ["slack","copy_testssl_issues"]
+    reactors: ["slack","copy_json_result","copy_html_result"]
     title: "Cert Expires in ~90 days"
   cert_expiration_60days:
     objectpath: "$.cert_expires_in_days is 60"
-    reactors: ["slack","copy_testssl_issues"]
+    reactors: ["slack","copy_json_result","copy_html_result"]
     title: "Cert Expires in ~60 days"
   cert_expiration_30days:
     objectpath: "$.cert_expires_in_days is 30"
-    reactors: ["slack","copy_testssl_issues"]
+    reactors: ["slack","copy_json_result","copy_html_result"]
     title: "Cert Expires in ~30 days"
   cert_expiration_7days:
     objectpath: "$.cert_expires_in_days is 7"
-    reactors: ["slack","copy_testssl_issues"]
+    reactors: ["slack","copy_json_result","copy_html_result"]
     title: "Cert Expires in ~7 days"
   cert_expiration_1day:
     objectpath: "$.cert_expires_in_days is 1"
-    reactors: ["slack","copy_testssl_issues"]
+    reactors: ["slack","copy_json_result","copy_html_result"]
     title: "Cert Expires in ~1 days"
   cert_expired:
     objectpath: "$.cert_expires_in_days <= 0"
-    reactors: ["slack","copy_testssl_issues"]
+    reactors: ["slack","copy_json_result","copy_html_result"]
     title: "Cert is EXPIRED!"
   protocol_issues:
     objectpath: "$.testssl_result.scanResult[0].protocols[@.severity in MEDIUMHIGHCRITICAL]"
-    reactors: ["slack","copy_testssl_issues"]
+    reactors: ["slack","copy_json_result","copy_html_result"]
     title: "One or more testssl.sh protocol issues found"
   cipher_issues:
     objectpath: "$.testssl_result.scanResult[0].ciphers[@.severity in MEDIUMHIGHCRITICAL]"
-    reactors: ["slack","copy_testssl_issues"]
+    reactors: ["slack","copy_json_result","copy_html_result"]
     title: "One or more testssl.sh cipher issues found"
   vulnerabilities_issues:
     objectpath: "$.testssl_result.scanResult[0].vulnerabilities[@.severity in MEDIUMHIGHCRITICAL]"
-    reactors: ["slack","copy_testssl_issues"]
+    reactors: ["slack","copy_json_result","copy_html_result"]
     title: "One or more testssl.sh vulnerabilities issues found"
 
 # -----------------------------------------
@@ -175,7 +175,7 @@ reactor_engines:
   # CopyFileReactor
   # - Copy files around based on fired trigger results
   # ---------------
-  copy_testssl_issues:
+  copy_json_result:
 
     class_name: "CopyFileReactor"
 
@@ -209,6 +209,15 @@ reactor_engines:
     #
     copy_from: "{{testssl_json_result_abs_file_path}}"
     copy_to: "output/testssl.sh-issues/{{tag}}/{{evaluation_doc.result_metadata.scan_timestamp}}_{{evaluation_doc.result_metadata.site_type}}_{{evaluation_doc.result_metadata.filename}}"
+
+  #----------------
+  # copy_html_result
+  # - Copy HTML result files around based on fired trigger results
+  # ---------------
+  copy_html_result:
+    class_name: "CopyFileReactor"
+    copy_from: "{{testssl_json_result_abs_file_path|replace('.json','.html')}}"
+    copy_to: "output/testssl.sh-issues/{{tag}}/{{testssl_result_filename|replace('.json','.html')}}"
 
 
   #----------------
