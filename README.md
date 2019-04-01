@@ -40,7 +40,7 @@ reactors:
 * **CopyFileReactor**: [copyfilereactor.py](reactors/copyfilereactor.py) - Copies files. For example to copy the testssl.sh JSON files that container certain vulnerabilities, see [example-config.yaml](example-config.yaml) for details
 
 
-# Configution details
+# Configuration details
 
 For full configuration details its best to see the ([see example here](example-config.yaml))
 in [example-config.yaml](example-config.yaml)
