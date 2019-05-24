@@ -230,7 +230,7 @@ reactor_engines:
 
     # Leverages a webhook url.
     # Example hook posts to: https://bitsofinfo.slack.com/messages/CE46Z3TJA/
-    # the #testsslsh-processor channel
+    # the #bitsofinfo-dev channel
     webhook_url: https://hooks.slack.com/services/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
 
     # The template engine is jinja2 and the below can be crafted however you want
